@@ -6,3 +6,6 @@
 **/*.pyo
 **/*.pyd
 **/.secrets/
+
+**/.cachebro/
+**/.atl/
