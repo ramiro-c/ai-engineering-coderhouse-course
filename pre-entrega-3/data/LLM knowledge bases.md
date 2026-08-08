@@ -28,5 +28,5 @@ TLDR: raw data from a given number of sources is collected, then compiled by an 
 
 ## Notas relacionadas
 
-- [[Qwen 3.6 Plus]] — modelo usado para construir knowledge bases en Obsidian vía [[OpenRouter]]
-- [[Karpathy - LLM Wiki pattern]]
+- Qwen 3.6 Plus — modelo usado para construir knowledge bases en Obsidian vía OpenRouter
+- Karpathy - LLM Wiki pattern

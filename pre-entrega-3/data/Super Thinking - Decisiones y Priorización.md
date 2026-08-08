@@ -1,6 +1,6 @@
 # Decisiones y Priorización
 
-> [!sumario] Idea central
+> Idea central
 > Usá marcos estructurados para priorizar lo que importa (Matriz de Eisenhower) y establecer expectativas realistas sobre cuánto tardan las cosas (Ley de Hofstadter).
 
 ---
@@ -16,9 +16,9 @@
 | **No Importante** | **Delegalo** — interrupciones, algunas reuniones, prioridades de otros | **Eliminalo** — pérdida de tiempo, trabajo ocupacional, distracciones triviales             |
 
 
-> [!tip] Clave
+> Clave
 > El cuadrante más impactante es **Importante / No Urgente**. Ahí es donde ocurre el verdadero crecimiento — pero también es el más fácil de descuidar porque nada está "en llamas" todavía.
-> Ver también: [[Super Thinking - Sistemas y Mercados#Decisiones Reversibles vs Irreversibles|Decisiones reversibles vs irreversibles]].
+> Ver también: Decisiones reversibles vs irreversibles.
 
 ---
 
@@ -37,12 +37,12 @@
 
 ## Notas relacionadas
 
-- [[Análisis de opciones — costo beneficio y sensibilidad]] — valorar pros/contras en el tiempo, descuento y sensibilidad (wiki)
-- [[Súper pensamiento]] (nota principal del libro)
-- [[Super Thinking - Sistemas y Mercados]]
-- [[Super Thinking - Sesgos y Objetividad]]
-- [[Super Thinking - Productividad y Enfoque]]
-- [[Super Thinking - Cambio y Experimentación]]
+- Análisis de opciones — costo beneficio y sensibilidad — valorar pros/contras en el tiempo, descuento y sensibilidad (wiki)
+- Súper pensamiento (nota principal del libro)
+- Super Thinking - Sistemas y Mercados
+- Super Thinking - Sesgos y Objetividad
+- Super Thinking - Productividad y Enfoque
+- Super Thinking - Cambio y Experimentación
 
-> [!referencia] Fuente
-> *Super Thinking* — [[Gabriel Weinberg]] & [[Lauren McCann]]
+> Fuente
+> *Super Thinking* — Gabriel Weinberg & Lauren McCann

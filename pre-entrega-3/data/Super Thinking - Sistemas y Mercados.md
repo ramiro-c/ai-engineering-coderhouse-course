@@ -1,6 +1,6 @@
 # Sistemas, Mercados y Trampas de Incentivos
 
-> [!sumario] Idea central
+> Idea central
 > Donde los mercados y sistemas fallan, suele ser por incentivos desalineados, costos ocultos o pensamiento cortoplacista. Cada modelo mental a continuación revela un modo de fallo y una forma de contrarrestarlo.
 
 ---
@@ -71,11 +71,11 @@
 
 ## Notas relacionadas
 
-- [[Súper pensamiento]] (nota principal del libro)
-- [[Super Thinking - Sesgos y Objetividad]]
-- [[Super Thinking - Productividad y Enfoque]]
-- [[Super Thinking - Cambio y Experimentación]]
-- [[Super Thinking - Decisiones y Priorización]]
+- Súper pensamiento (nota principal del libro)
+- Super Thinking - Sesgos y Objetividad
+- Super Thinking - Productividad y Enfoque
+- Super Thinking - Cambio y Experimentación
+- Super Thinking - Decisiones y Priorización
 
-> [!referencia] Fuente
-> *Super Thinking* — [[Gabriel Weinberg]] & [[Lauren McCann]]
+> Fuente
+> *Super Thinking* — Gabriel Weinberg & Lauren McCann

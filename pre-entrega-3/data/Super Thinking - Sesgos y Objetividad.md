@@ -1,6 +1,6 @@
 # Sesgos Cognitivos y Pensamiento Objetivo
 
-> [!sumario] Idea central
+> Idea central
 > Para acertarle más, necesitás dos cosas: mejorar con el tiempo (**antifrágil**) y cometer menos errores evitables en tu razonamiento (**errores no forzados**). Como advirtió Feynman: *"No debés engañarte a vos mismo — y sos la persona más fácil de engañar."*
 
 ---
@@ -78,9 +78,9 @@
 
 ## Incertidumbre y variación
 
-[[Andrew Gelman]] propone avanzar hacia una mayor aceptación de la incertidumbre y de la variación. Esta idea funciona como antídoto al exceso de certeza: cuando tratás las conclusiones como probabilísticas (en vez de absolutas), tomás mejores decisiones y reducís errores evitables.
+Andrew Gelman propone avanzar hacia una mayor aceptación de la incertidumbre y de la variación. Esta idea funciona como antídoto al exceso de certeza: cuando tratás las conclusiones como probabilísticas (en vez de absolutas), tomás mejores decisiones y reducís errores evitables.
 
-Ver también: [[Incertidumbre y variación - Andrew Gelman]].
+Ver también: Incertidumbre y variación - Andrew Gelman.
 
 ---
 
@@ -98,12 +98,12 @@ Ver también: [[Incertidumbre y variación - Andrew Gelman]].
 
 ## Notas relacionadas
 
-- [[Súper pensamiento]] (nota principal del libro)
-- [[Super Thinking - Sistemas y Mercados]]
-- [[Super Thinking - Productividad y Enfoque]]
-- [[Super Thinking - Cambio y Experimentación]]
-- [[Super Thinking - Decisiones y Priorización]]
-- [[Incertidumbre y variación - Andrew Gelman]]
+- Súper pensamiento (nota principal del libro)
+- Super Thinking - Sistemas y Mercados
+- Super Thinking - Productividad y Enfoque
+- Super Thinking - Cambio y Experimentación
+- Super Thinking - Decisiones y Priorización
+- Incertidumbre y variación - Andrew Gelman
 
-> [!referencia] Fuente
-> *Super Thinking* — [[Gabriel Weinberg]] & [[Lauren McCann]]
+> Fuente
+> *Super Thinking* — Gabriel Weinberg & Lauren McCann
