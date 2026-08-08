@@ -6,8 +6,8 @@
 **/*.pyo
 **/*.pyd
 **/.secrets/
-
 **/.cachebro/
 **/.atl/
-
+**/.ruff_cache/
+**/.pytest_cache/
 **/vectorstore/
