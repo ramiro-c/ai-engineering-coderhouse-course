@@ -17,7 +17,7 @@ from ingest import count_chunks, ingest_corpus
 from rag import get_rag_response
 from retriever import _filter_relevant
 
-PREGUNTA_RESPONDIBLE = "¿Qué es el sesgo de confirmación?"
+PREGUNTA_RESPONDIBLE = "¿Cómo funciona la matriz de Eisenhower?"
 PREGUNTA_TRAMPA = "¿Cuál es la capital de Australia?"
 
 
@@ -26,6 +26,9 @@ def test_pregunta_respondible_con_grounding(vectorstore):
     """RAG-GEN-01: texto en español fundamentado y references no vacías."""
     respuesta = asyncio.run(get_rag_response(PREGUNTA_RESPONDIBLE))
     assert respuesta.text.strip(), "la respuesta no puede estar vacía"
+    assert "no lo sé" not in respuesta.text.lower(), (
+        "una consulta respondible debe responderse con el contexto, no con 'No lo sé'"
+    )
     assert len(respuesta.references) > 0, (
         "una consulta respondible debe traer references"
     )

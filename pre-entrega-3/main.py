@@ -5,7 +5,7 @@ import asyncio
 from rag import get_rag_response
 from schemas import RagGenerationError
 
-PREGUNTA_RESPONDIBLE = "¿Qué es la falacia de la planificación?"
+PREGUNTA_RESPONDIBLE = "¿Cómo funciona la matriz de Eisenhower?"
 PREGUNTA_TRAMPA = "¿Cuál es la capital de Australia?"
 
 

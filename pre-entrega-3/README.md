@@ -59,11 +59,11 @@ Ejemplo de salida de `python -m main`:
 
 ```json
 {
-  "text": "El contexto indica que para evitar el sesgo de confirmación, tenés que resistir consistentemente el pensamiento binario.",
+  "text": "La Matriz de Eisenhower funciona categorizando las tareas en dos ejes: urgente vs. no urgente e importante vs. no importante...",
   "references": [
     {
-      "source": "Super Thinking - Sesgos y Objetividad.md",
-      "snippet": "### Tácticas Prácticas\n\n- **Navaja de Ockham**: ..."
+      "source": "Super Thinking - Decisiones y Priorización.md",
+      "snippet": "## Matriz de Decisiones de Eisenhower\n\n> Categorizá las tareas en dos ejes: ..."
     }
   ]
 }
