@@ -47,7 +47,11 @@ GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 CHUNK_SIZE = _env_int("CHUNK_SIZE", 800)
 CHUNK_OVERLAP = _env_int("CHUNK_OVERLAP", 50)
 TOP_K = _env_int("TOP_K", 4)
-SIMILARITY_THRESHOLD = _env_float("SIMILARITY_THRESHOLD", 0.5)
+# Calibrado empíricamente en apply con MiniLM multilingual + espacio coseno:
+# consultas afines al corpus puntúan 0.33-0.63 (mínimo observado 0.329);
+# consultas ajenas puntúan 0.04-0.26 (máximo observado 0.264). 0.30 separa
+# ambos grupos con margen y evita falsos "No lo sé" sobre consultas válidas.
+SIMILARITY_THRESHOLD = _env_float("SIMILARITY_THRESHOLD", 0.30)
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
