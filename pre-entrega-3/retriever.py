@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-from config import COLLECTION_NAME, SIMILARITY_THRESHOLD, TOP_K, VECTORSTORE_DIR
+from config import COLLECTION_NAME, SIMILARITY_THRESHOLD, VECTORSTORE_DIR
 from embeddings import get_embeddings
 
 
