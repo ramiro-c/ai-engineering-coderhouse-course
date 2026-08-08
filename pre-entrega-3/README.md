@@ -84,8 +84,8 @@ pytest
 
 Los tests de integración usan un fixture **session-scoped** que reusa el índice
 de `./vectorstore` (idempotente). Con `HF_HUB_OFFLINE=1` y sin caché ni índice
-persistido, se saltean con un mensaje claro. `pytest` no está en
-`requirements.txt`: se usa el runner global del entorno.
+persistido, se saltean con un mensaje claro. `pytest` está incluido en
+`requirements.txt`.
 
 ## Configuración (variables de entorno)
 

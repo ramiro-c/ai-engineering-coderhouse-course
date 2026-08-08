@@ -11,3 +11,4 @@ chromadb>=1.0
 sentence-transformers
 pydantic>=2.12
 python-dotenv
+pytest>=8
