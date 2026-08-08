@@ -10,13 +10,6 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 
 
-def _env_flag(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _env_int(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -36,21 +29,20 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").strip().lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Vertex AI backend for Gemini (uses ADC, not GEMINI_API_KEY)
-GOOGLE_GENAI_USE_VERTEXAI = _env_flag("GOOGLE_GENAI_USE_VERTEXAI", default=False)
-GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
-GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+# GOOGLE_GENAI_USE_VERTEXAI, GOOGLE_CLOUD_* y OPENROUTER_API_KEY no se declaran
+# acá: las leen las propias librerías del entorno que deja el load_dotenv().
 
 # --- RAG semántico local ---
-CHUNK_SIZE = _env_int("CHUNK_SIZE", 800)
+# Tope: MiniLM embebe 128 word pieces (~400 caracteres de español) y descarta el
+# resto en silencio. Con chunks más largos, su segunda mitad no se busca nunca.
+CHUNK_SIZE = _env_int("CHUNK_SIZE", 400)
 CHUNK_OVERLAP = _env_int("CHUNK_OVERLAP", 50)
 TOP_K = _env_int("TOP_K", 4)
-# Calibrado empíricamente en apply con MiniLM multilingual + espacio coseno:
-# consultas afines al corpus puntúan 0.33-0.63 (mínimo observado 0.329);
-# consultas ajenas puntúan 0.04-0.26 (máximo observado 0.264). 0.30 separa
-# ambos grupos con margen y evita falsos "No lo sé" sobre consultas válidas.
+# Los scores de consultas afines y ajenas se superponen (peor afín 0.310, peor
+# ajeno 0.329): ningún umbral acierta de los dos lados. Se elige recall alto
+# porque el LLM es la segunda guarda y rechaza lo que se cuela, mientras que un
+# afín bloqueado acá nunca llega al LLM. Recalibrar si cambia corpus o modelo.
 SIMILARITY_THRESHOLD = _env_float("SIMILARITY_THRESHOLD", 0.30)
 EMBEDDING_MODEL = os.getenv(
     "EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -58,10 +50,3 @@ EMBEDDING_MODEL = os.getenv(
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "apuntes")
 VECTORSTORE_DIR = Path(os.getenv("VECTORSTORE_DIR", str(BASE_DIR / "vectorstore")))
 DATA_DIR = Path(os.getenv("DATA_DIR", str(BASE_DIR / "data")))
-
-EXPECTED_CORPUS = [
-    "Super Thinking - Sesgos y Objetividad.md",
-    "Super Thinking - Sistemas y Mercados.md",
-    "Super Thinking - Decisiones y Priorización.md",
-    "LLM knowledge bases.md",
-]
