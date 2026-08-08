@@ -34,7 +34,10 @@ def _validate_corpus() -> list[tuple[str, str]]:
                 DATA_DIR=DATA_DIR, missing=", ".join(missing)
             )
         )
-    return [(name, (DATA_DIR / name).read_text(encoding="utf-8")) for name in EXPECTED_CORPUS]
+    return [
+        (name, (DATA_DIR / name).read_text(encoding="utf-8"))
+        for name in EXPECTED_CORPUS
+    ]
 
 
 def _index_ready() -> bool:
@@ -64,7 +67,9 @@ def ingest_corpus() -> int:
     (idempotente: no regenera embeddings ni duplica chunks, RAG-ING-02).
     """
     if _index_ready():
-        logger.info("Índice ya existente en %s — se saltea el reindexado", VECTORSTORE_DIR)
+        logger.info(
+            "Índice ya existente en %s — se saltea el reindexado", VECTORSTORE_DIR
+        )
         return 0
 
     corpus = _validate_corpus()

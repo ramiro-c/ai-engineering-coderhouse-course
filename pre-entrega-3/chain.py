@@ -58,13 +58,17 @@ def _build_chains() -> tuple[Runnable, Runnable]:
         ]
     )
 
-    chain_a = (prompt_parser | model | parser).with_retry(stop_after_attempt=MAX_ATTEMPTS)
+    chain_a = (prompt_parser | model | parser).with_retry(
+        stop_after_attempt=MAX_ATTEMPTS
+    )
     # Cadena B (fallback): salida estructurada nativa del proveedor
     chain_b = prompt_structured | model.with_structured_output(RagResponse)
     return chain_a, chain_b
 
 
-async def generate_response(pregunta: str, contexto: str) -> RagResponse | RagGenerationError:
+async def generate_response(
+    pregunta: str, contexto: str
+) -> RagResponse | RagGenerationError:
     """Genera la respuesta con la cadena A; si falla, con la B; si B falla, error."""
     chain_a, chain_b = _build_chains()
 

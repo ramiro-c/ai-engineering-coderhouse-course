@@ -50,7 +50,9 @@ async def get_rag_response(query: str) -> RagResponse | RagGenerationError:
     relevant = _filter_relevant(scored, threshold=SIMILARITY_THRESHOLD)
 
     if not relevant:
-        logger.info("0 fragmentos sobre el umbral (%.2f) para la consulta", SIMILARITY_THRESHOLD)
+        logger.info(
+            "0 fragmentos sobre el umbral (%.2f) para la consulta", SIMILARITY_THRESHOLD
+        )
         return RagResponse(text=NO_SE_RESPONSE, references=[])
 
     logger.info("%d fragmentos superaron el gate de relevancia", len(relevant))
