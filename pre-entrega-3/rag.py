@@ -26,7 +26,7 @@ def _formatear_contexto(relevant: list[tuple[object, float]]) -> str:
 
 
 def _build_references(relevant: list[tuple[object, float]]) -> list[RagReference]:
-    """References refleja SOLO los fragmentos que pasaron el gate (RAG-GEN-02)."""
+    """References refleja SOLO los fragmentos que pasaron el gate."""
     references = []
     for doc, _score in relevant:
         references.append(
@@ -43,7 +43,7 @@ async def get_rag_response(query: str) -> RagResponse | RagGenerationError:
 
     Flujo: recupera top_k fragmentos -> gate de relevancia -> si 0 relevantes,
     devuelve "No lo sé" sin llamar al LLM; si no, genera con la cadena A y
-    cae a la cadena B si el parser falla (RAG-GEN-01).
+    cae a la cadena B si el parser falla.
     """
     retriever = build_retriever()
     scored = retriever.similarity_search_with_relevance_scores(query, k=TOP_K)

@@ -10,7 +10,7 @@ from embeddings import get_embeddings
 def build_retriever() -> Chroma:
     """Retriever sobre el índice persistido.
 
-    Usa el MISMO embedder que la ingesta (RAG-RET-01): la factory
+    Usa el MISMO embedder que la ingesta: la factory
     `get_embeddings()` está cacheada y se comparte entre index y query.
     """
     if not (VECTORSTORE_DIR / "chroma.sqlite3").exists():
@@ -32,6 +32,6 @@ def _filter_relevant(
 
     langchain_chroma con espacio `cosine` mapea distancia -> relevance como
     `1 - distance` (similitud coseno). Un score >= SIMILARITY_THRESHOLD indica
-    que el fragmento es afín a la consulta; por debajo se descarta (RAG-GEN-02).
+    que el fragmento es afín a la consulta; por debajo se descarta.
     """
     return [(doc, score) for doc, score in results if score >= threshold]

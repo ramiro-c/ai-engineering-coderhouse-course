@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def _validate_corpus() -> list[tuple[str, str]]:
     """Valida que los 4 apuntes existan y devuelve (nombre, contenido).
 
-    Si falta alguno, lanza FileNotFoundError SIN persistir nada (RAG-ING-01).
+    Si falta alguno, lanza FileNotFoundError SIN persistir nada.
     """
     missing = [name for name in EXPECTED_CORPUS if not (DATA_DIR / name).is_file()]
     if missing:
@@ -41,7 +41,7 @@ def _validate_corpus() -> list[tuple[str, str]]:
 
 
 def _index_ready() -> bool:
-    """True si la colección ya existe con al menos un documento (RAG-ING-02)."""
+    """True si la colección ya existe con al menos un documento."""
     if not (VECTORSTORE_DIR / "chroma.sqlite3").exists():
         return False
     try:
@@ -64,7 +64,7 @@ def ingest_corpus() -> int:
     """Indexa el corpus en Chroma (colección local persistente).
 
     Devuelve la cantidad de chunks indexados; 0 si el índice ya existía
-    (idempotente: no regenera embeddings ni duplica chunks, RAG-ING-02).
+    (idempotente: no regenera embeddings ni duplica chunks).
     """
     if _index_ready():
         logger.info(

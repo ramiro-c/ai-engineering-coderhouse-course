@@ -33,12 +33,12 @@ SYSTEM_PROMPT = (
 def _build_chains() -> tuple[Runnable, Runnable]:
     """Construye (cadena A, cadena B) de forma perezosa.
 
-    El modelo se crea recién acá para que recuperación y gate (RAG-GEN-02)
+    El modelo se crea recién acá para que recuperación y gate
     funcionen sin credenciales del LLM: solo la generación las necesita.
     """
     model = build_chat_model(provider=None, temperature=0.2)
 
-    # Cadena A: parser Pydantic didáctico con reintentos (RAG-GEN-01)
+    # Cadena A: parser Pydantic didáctico con reintentos
     parser = PydanticOutputParser(pydantic_object=RagResponse)
 
     prompt_parser = ChatPromptTemplate.from_messages(

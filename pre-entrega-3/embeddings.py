@@ -12,7 +12,7 @@ def get_embeddings() -> HuggingFaceEmbeddings:
     """Factory única del embedder local.
 
     Garantiza que indexación (ingest.py) y consulta (retriever.py) usen la MISMA
-    instancia y configuración del modelo (RAG-RET-01).
+    instancia y configuración del modelo.
     """
     return HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,

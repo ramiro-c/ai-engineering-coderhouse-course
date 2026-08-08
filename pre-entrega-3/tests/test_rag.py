@@ -1,4 +1,4 @@
-"""Tests de integración del RAG local (RAG-GEN-01, RAG-GEN-02, RAG-ING-02).
+"""Tests de integración del RAG local.
 
 Los tests de integración usan `asyncio.run` (sin pytest-asyncio) y están
 marcados como `slow` porque requieren el modelo de embeddings local.
@@ -23,7 +23,7 @@ PREGUNTA_TRAMPA = "¿Cuál es la capital de Australia?"
 
 @pytest.mark.slow
 def test_pregunta_respondible_con_grounding(vectorstore):
-    """RAG-GEN-01: texto en español fundamentado y references no vacías."""
+    """Texto en español fundamentado y references no vacías."""
     respuesta = asyncio.run(get_rag_response(PREGUNTA_RESPONDIBLE))
     assert respuesta.text.strip(), "la respuesta no puede estar vacía"
     assert "no lo sé" not in respuesta.text.lower(), (
@@ -36,7 +36,7 @@ def test_pregunta_respondible_con_grounding(vectorstore):
 
 @pytest.mark.slow
 def test_pregunta_trampa_no_alucina(vectorstore):
-    """RAG-GEN-02: pregunta ajena al corpus -> 'No lo sé' sin references."""
+    """Pregunta ajena al corpus -> 'No lo sé' sin references."""
     respuesta = asyncio.run(get_rag_response(PREGUNTA_TRAMPA))
     assert "no lo sé" in respuesta.text.lower()
     assert respuesta.references == []
@@ -44,7 +44,7 @@ def test_pregunta_trampa_no_alucina(vectorstore):
 
 @pytest.mark.slow
 def test_ingesta_idempotente(vectorstore):
-    """RAG-ING-02: re-ingestar no duplica chunks."""
+    """Re-ingestar no duplica chunks."""
     antes = count_chunks()
     assert antes > 0, "el fixture debe haber indexado chunks"
     reindexados = ingest_corpus()
