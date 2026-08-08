@@ -51,11 +51,19 @@ default `gemini`); el `.env.example` está espejado sin claves reales.
 # 1. Ingesta del corpus (idempotente: re-ejecutar no duplica)
 python -m ingest
 
-# 2. Demo: pregunta respondible + pregunta trampa
+# 2. Chat interactivo: hacé cualquier pregunta sobre el corpus
 python -m main
 ```
 
-Ejemplo de salida de `python -m main`:
+En el chat escribís preguntas variadas y el sistema responde grounded con sus
+referencias; `salir`, `q` o `exit` terminan la sesión. También hay un modo demo
+con las dos preguntas fijas (una respondible y una trampa):
+
+```bash
+python -m main --demo
+```
+
+Ejemplo de salida del chat:
 
 ```json
 {
@@ -68,6 +76,9 @@ Ejemplo de salida de `python -m main`:
   ]
 }
 ```
+
+En el chat, en lugar del JSON crudo, la respuesta se muestra como texto legible
+seguido de las referencias usadas.
 
 Si la pregunta no tiene relación con el corpus, `references` queda vacía y el
 texto expresa que no sabe ("No lo sé").
