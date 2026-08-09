@@ -4,6 +4,7 @@ Entregables del curso:
 
 - [`pre-entrega-1/`](pre-entrega-1/) - Unified Async LLM Client
 - [`pre-entrega-2/`](pre-entrega-2/) - Pipeline de procesamiento validado (LangChain + Pydantic)
+- [`pre-entrega-3/`](pre-entrega-3/) - RAG semántico local sobre apuntes (LangChain 1.x + Chroma)
 
 
 Links de referencia:
