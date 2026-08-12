@@ -206,10 +206,22 @@ def test_chunking_metadata_minima():
     _DOCS_CORPUS,
     ids=[p.name for p in _DOCS_CORPUS],
 )
-def test_corpus_real_dentro_de_limite_superior(ruta):
-    """Todo el corpus de U2 produce al menos un chunk de hasta 800 tokens."""
+def test_corpus_real_produce_chunk_en_rango_500_800(ruta):
+    """Corpus corregido: cada documento produce al menos un chunk en [500,800] tokens.
+
+    Contrato reforzado (decision del orquestador): el corpus de data/ se enriquecio
+    para que cada doc de ~600-950 tokens permita al menos un chunk completo dentro
+    del rango RF-2 medido con tiktoken cl100k_base. Se mantiene el tope previo
+    (ningun chunk por encima de 800) y se agrega el piso de 500.
+    """
     texto = ruta.read_text()
     source = f"{ruta.parent.name}/{ruta.name}"
     chunks = build_chunks(texto, source)
     assert len(chunks) >= 1
-    assert all(_tokens(c.page_content) <= 800 for c in chunks)
+    assert all(_tokens(c.page_content) <= 800 for c in chunks), (
+        f"{ruta.name}: hay chunks por encima del tope de 800 tokens"
+    )
+    assert any(500 <= _tokens(c.page_content) <= 800 for c in chunks), (
+        f"{ruta.name}: ningun chunk alcanza el piso de 500 tokens "
+        f"(max={max(_tokens(c.page_content) for c in chunks)})"
+    )
