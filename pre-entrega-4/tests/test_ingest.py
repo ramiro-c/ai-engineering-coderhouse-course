@@ -190,3 +190,28 @@ def test_upsert_corpus_valida_metadata_antes_de_upsert(monkeypatch):
         ingest.upsert_corpus(indice=object(), embeddings=object())
 
     assert vectorstores == []  # nada se instancio ni se hizo upsert
+
+
+def test_upsert_corpus_sin_embeddings_usa_get_embeddings(monkeypatch):
+    """Camino por defecto del CLI: embeddings=None resuelve get_embeddings() (F821).
+
+    main() de ingest.py llama `upsert_corpus(indice)` sin pasar embeddings:
+    el resolver por defecto (get_embeddings, cacheado) debe proveer la
+    instancia que reciben los vectorstores. Este test ejercita ese camino
+    real; en la Fase 4 los demas tests pasan embeddings explicito y no lo
+    cubren (regresion RF-2: el CLI crasheaba con NameError).
+    """
+    import embeddings
+    import ingest
+
+    monkeypatch.setenv("OPENAI_API_KEY", "dummy-para-tests-unit")
+    embeddings.get_embeddings.cache_clear()
+
+    vectorstores: list[_VectorStoreStub] = []
+    monkeypatch.setattr(ingest, "PineconeVectorStore", _fabrica_de_vectorstores(vectorstores))
+
+    totales = ingest.upsert_corpus(indice=object())  # embeddings=None (default)
+
+    assert totales  # la ingesta se completo por el camino por defecto
+    esperado = embeddings.get_embeddings()
+    assert all(vs.embedding is esperado for vs in vectorstores)
