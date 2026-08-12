@@ -74,11 +74,12 @@ golden_set.json ──> evaluate.py ──> RAGSystem.retrieve() ──> Ensembl
 | Módulo | Responsabilidad |
 |---|---|
 | `config.py` | Variables de entorno con defaults tipados y constantes del pipeline |
-| `schemas.py` | Modelos Pydantic: GoldenSet, RetrievalHit, EvalResult |
+| `schemas.py` | Modelos Pydantic: GoldenSet, RetrievalHit, EvalResult, LlmAnswer |
 | `init_index.py` | Crea/verifica el índice Serverless idempotente (poll a READY) |
 | `ingest.py` | Chunking por tokens, ids deterministas, upsert por namespace |
 | `embeddings.py` | Cliente de embeddings cacheado (text-embedding-3-small) |
-| `rag_system.py` | RAGSystem: BM25 + vectores con EnsembleRetriever (RRF c=60, 0.5/0.5) |
+| `rag_system.py` | RAGSystem: BM25 + vectores con EnsembleRetriever (RRF c=60, 0.5/0.5) y `responder()` |
+| `clients/factory.py` | Factory multi-proveedor LLM (`build_chat_model`, default `LLM_PROVIDER`) |
 | `evaluate.py` | Métricas puras + CLI de evaluación contra el golden set |
 
 ## Recuperación híbrida
@@ -114,21 +115,58 @@ aciertos.
 ## Tests
 
 ```bash
-python -m pytest tests -m "not slow" -q     # suite unit sin red (~73 tests)
+python -m pytest tests -m "not slow" -q     # suite unit sin red (~87 tests)
 python -m pytest tests -m slow -q           # integración real (necesita .env completo)
 ```
 
 Los tests de integración (`test_integration.py`) corren contra el índice real y
 se saltean con mensaje claro si faltan `PINECONE_API_KEY` u `OPENAI_API_KEY`
 (patrón de pre-entrega-3). La suite unit usa stubs y funciones puras: no toca
-la red.
+la red. El factory LLM se testea con módulos falsos en `sys.modules` y
+`responder()` con un modelo fake (`RunnableLambda`): nunca se llama a una API
+real.
 
-## Evolución B — generación de respuestas con LLM (próxima fase)
+## Generación de respuestas (evolución B)
 
-La capa de **generación** (responder la pregunta con un LLM citando los
-`document_id` recuperados) se implementa en la **próxima fase** del cambio
-(U6): una factory multi-proveedor (`clients/factory.py`, patrón de
-pre-entrega-3) con `LLM_PROVIDER` configurable (default `gemini`) y un
-`responder()` en `rag_system.py` que devuelve respuestas estructuradas solo a
-partir del contexto recuperado. No participa en las métricas de esta entrega:
-la evaluación mide recuperación, no generación.
+La capa de generación responde una pregunta con un LLM **citando los
+`document_id` recuperados**. `RAGSystem.responder(pregunta, k=5, namespace=None)`
+recupera el top-k híbrido, arma el contexto con los chunks y su metadata, y
+genera una respuesta estructurada `LlmAnswer` (`pregunta`, `respuesta`,
+`answered`, `fuentes`) con un prompt estricto en español neutro: usar SOLO el
+contexto provisto y citar `document_id` reales de la metadata (nunca
+inventados).
+
+```python
+from rag_system import RAGSystem
+
+rag = RAGSystem()
+respuesta = rag.responder("¿Cómo se definen las rutas en FastAPI?")
+print(respuesta.respuesta)   # "Según routing.md, las rutas se definen con..."
+print(respuesta.fuentes)     # ["routing.md", ...]
+print(respuesta.answered)    # True si el contexto alcanzó para responder
+```
+
+Si no hay contexto suficiente, o si la API del proveedor falla, `responder()`
+devuelve `answered=false` con un mensaje claro y `fuentes=[]`, sin romper el
+flujo (máx 2 reintentos internos ante errores de parseo/API).
+
+### Proveedor del LLM (`LLM_PROVIDER`)
+
+El modelo lo elige la factory `clients/factory.py` (patrón de pre-entrega-3)
+según la variable `LLM_PROVIDER` (default `gemini`):
+
+| `LLM_PROVIDER` | Variable de clave | Modelo por defecto |
+|---|---|---|
+| `gemini` (default) | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` |
+| `anthropic` | `ANTHROPIC_API_KEY` | `claude-3-5-haiku-latest` |
+| `openrouter` | clave de OpenRouter | `cohere/north-mini-code:free` |
+
+Solo hace falta la clave del provider activo (las deps de los demás providers
+son imports lazy y se instalan en `requirements.txt`).
+
+> **NOTA — la generación NO participa en la evaluación.** Las métricas
+> (Precision@5/Recall@5/MRR) y el criterio `Recall@5 ≥ 0.8` miden SOLO la
+> recuperación híbrida; la capa de generación es una demostración opcional.
+> Un buen score de evaluación no garantiza buenas respuestas generadas (y
+> viceversa).
