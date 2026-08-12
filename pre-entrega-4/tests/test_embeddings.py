@@ -70,7 +70,6 @@ def test_get_embeddings_sin_api_key(monkeypatch):
     """ENMIENDA: los embeddings locales NO exigen OPENAI_API_KEY ni ninguna key."""
     fake, llamadas = _fake_hf()
     monkeypatch.setattr(embeddings, "HuggingFaceEmbeddings", fake)
-    monkeypatch.setattr(embeddings, "OPENAI_API_KEY", None)
 
     cliente = embeddings.get_embeddings()
 
@@ -79,6 +78,8 @@ def test_get_embeddings_sin_api_key(monkeypatch):
         "el constructor de HuggingFaceEmbeddings no recibe api_key: la "
         "credencial de OpenAI ya no aplica a los embeddings"
     )
+    # El módulo ni siquiera importa la clave de OpenAI: no hay de qué depender.
+    assert not hasattr(embeddings, "OPENAI_API_KEY")
 
 
 def test_importar_embeddings_no_instancia_el_modelo(monkeypatch):
