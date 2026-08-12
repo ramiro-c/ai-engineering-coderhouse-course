@@ -39,6 +39,7 @@ from config import (
     NAMESPACE_DEFAULT,
     PINECONE_API_KEY,
 )
+from embeddings import get_embeddings
 
 # Limite de metadata por vector de Pinecone (~40KB, RF-2 edge).
 METADATA_SIZE_LIMIT = 40_000
