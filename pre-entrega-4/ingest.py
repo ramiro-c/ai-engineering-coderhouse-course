@@ -1,32 +1,43 @@
-"""Ingesta pura de la pre-entrega 4: chunking por tokens e ids deterministas.
+"""Ingesta de la pre-entrega 4: chunking por tokens, ids deterministas y upsert.
 
 Fase 3 (sin red): build_chunks() combina MarkdownHeaderTextSplitter (cabeceras
 h1-h3 como contexto, D6) con RecursiveCharacterTextSplitter medido en tokens
 (tiktoken cl100k_base, D3) y empaqueta las piezas para que cada chunk quede en
 el rango de 500-800 tokens de RF-2. Los helpers chunk_id/build_namespace/
 validate_metadata_size sostienen la idempotencia (D5) y el mapeo multi-tenant
-(D7). El wiring de PineconeVectorStore (upsert, texto en metadata) se agrega
-en la fase 4.
+(D7).
+
+Fase 4 (wiring real): upsert_corpus() sube todo data/ a Pinecone con
+PineconeVectorStore (text_key="texto", D4), ids deterministas y metadata
+validada antes del upsert (RF-2 edge). El CLI `python ingest.py` verifica el
+índice (init_index) y ejecuta la ingesta completa.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
+import pinecone
 import tiktoken
 from langchain_core.documents import Document
+from langchain_pinecone import PineconeVectorStore
 from langchain_text_splitters import (
     MarkdownHeaderTextSplitter,
     RecursiveCharacterTextSplitter,
 )
 
 from config import (
+    BATCH_SIZE,
     CHUNK_OVERLAP,
     CHUNK_SIZE,
+    DATA_DIR,
     FUENTE_NAMESPACES,
+    INDEX_NAME,
     NAMESPACE_DEFAULT,
+    PINECONE_API_KEY,
 )
 
 # Limite de metadata por vector de Pinecone (~40KB, RF-2 edge).
@@ -148,3 +159,87 @@ def validate_metadata_size(metadata: dict) -> bool:
     completo (~50KB+); los chunks reales (~2-4KB) siempre pasan.
     """
     return len(json.dumps(metadata)) < METADATA_SIZE_LIMIT
+
+
+def upsert_corpus(
+    indice,
+    embeddings=None,
+    namespace_override: str | None = None,
+    batch_size: int = BATCH_SIZE,
+) -> dict[str, int]:
+    """Indexa todo el corpus de data/ en Pinecone (wiring de la Fase 4).
+
+    Por cada .md: build_chunks() (chunks de 500-800 tokens, D6) y mapeo al
+    namespace de su subcarpeta con build_namespace (D7; namespace_override lo
+    fuerza para todos). Cada chunk se sube con PineconeVectorStore en su
+    namespace, con id determinista chunk_id() (D5: la re-ejecución reemplaza
+    los mismos ids sin duplicar, RF-2) y metadata validada con
+    validate_metadata_size() antes del upsert (RF-2 edge). text_key="texto"
+    guarda el texto original del chunk (D4) para poder citar.
+
+    Devuelve {namespace: cantidad_de_vectores} para el log del CLI.
+    """
+    if embeddings is None:
+        embeddings = get_embeddings()
+
+    pendientes: dict[str, list[tuple[Document, str]]] = {}
+    for ruta in sorted(DATA_DIR.rglob("*.md")):
+        rel = ruta.relative_to(DATA_DIR)
+        namespace = namespace_override or build_namespace(rel.parts[0])
+        for chunk in build_chunks(ruta.read_text(encoding="utf-8"), str(rel)):
+            metadata = {**chunk.metadata, "namespace": namespace}
+            if not validate_metadata_size({**metadata, "texto": chunk.page_content}):
+                raise ValueError(
+                    f"Metadata del chunk de {chunk.metadata['document_id']} "
+                    f"supera el limite de {METADATA_SIZE_LIMIT} bytes: no se indexa."
+                )
+            pendientes.setdefault(namespace, []).append(
+                (
+                    Document(page_content=chunk.page_content, metadata=metadata),
+                    chunk_id(namespace, chunk.page_content),
+                )
+            )
+
+    totales: dict[str, int] = {}
+    for namespace, pares in pendientes.items():
+        vectorstore = PineconeVectorStore(
+            index=indice,
+            embedding=embeddings,
+            text_key="texto",
+            namespace=namespace,
+        )
+        for inicio in range(0, len(pares), batch_size):
+            lote = pares[inicio : inicio + batch_size]
+            vectorstore.add_documents(
+                [documento for documento, _ in lote],
+                ids=[id_chunk for _, id_chunk in lote],
+            )
+        totales[namespace] = len(pares)
+    return totales
+
+
+def main() -> None:
+    """CLI de ingesta: python ingest.py — verifica el índice y sube el corpus.
+
+    Es idempotente (RF-2): re-ejecutarlo reemplaza los mismos ids sin
+    duplicar vectores. Verifica primero el índice con init_index() para que
+    `python ingest.py` solo también funcione.
+    """
+    try:
+        from init_index import init_index
+
+        init_index()
+    except RuntimeError as error:
+        print(f"[ingest] ERROR: {error}", file=sys.stderr)
+        sys.exit(1)
+
+    cliente = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+    indice = cliente.Index(INDEX_NAME)
+    totales = upsert_corpus(indice)
+    for namespace, cantidad in totales.items():
+        print(f"[ingest] namespace '{namespace}': {cantidad} vectores")
+    print(f"[ingest] Ingesta completa en el índice '{INDEX_NAME}'.")
+
+
+if __name__ == "__main__":
+    main()
