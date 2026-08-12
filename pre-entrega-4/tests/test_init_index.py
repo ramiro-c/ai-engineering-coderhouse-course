@@ -14,6 +14,7 @@ import pytest
 
 import init_index
 from config import DIMENSION, INDEX_NAME, METRIC, PINECONE_CLOUD, PINECONE_REGION
+from pinecone.exceptions import NotFoundException
 
 
 class _Status:
@@ -39,7 +40,7 @@ class _IndiceFalso:
 
 
 class _PineconeStub:
-    """Stub del cliente: describe_index (None si no existe) y create_index."""
+    """Stub del cliente: describe_index (NotFoundException si no existe) y create_index."""
 
     def __init__(self, indice_existente: _IndiceFalso | None = None):
         self.indices: dict[str, _IndiceFalso] = {}
@@ -51,8 +52,13 @@ class _PineconeStub:
     def describe_index(self, nombre: str):
         self.describes += 1
         indice = self.indices.get(nombre)
-        if indice is not None:
-            indice.avanzar()
+        if indice is None:
+            # Semántica real de pinecone 7.3.0 (SDK v6.x): un índice inexistente
+            # lanza pinecone.exceptions.NotFoundException (404), NO devuelve None.
+            raise NotFoundException(
+                status=404, reason=f"Resource {nombre} not found"
+            )
+        indice.avanzar()
         return indice
 
     def create_index(self, name, dimension, metric, spec):
