@@ -1,0 +1,24 @@
+{
+  "casos": [
+    {
+      "pregunta": "¿Qué decorador debo usar para crear un endpoint que responda a peticiones POST?",
+      "documento_id_esperado": "routing.md"
+    },
+    {
+      "pregunta": "¿Qué ocurre si un cliente no envía un parámetro de consulta que no tiene valor por defecto?",
+      "documento_id_esperado": "path-query-params.md"
+    },
+    {
+      "pregunta": "¿Cómo inyecto la misma dependencia compartida en varios endpoints usando Depends?",
+      "documento_id_esperado": "dependencies.md"
+    },
+    {
+      "pregunta": "¿Cómo agrego un middleware HTTP personalizado que ejecute código antes y después de cada petición?",
+      "documento_id_esperado": "middleware.md"
+    },
+    {
+      "pregunta": "¿Cómo escribo un test de un endpoint usando TestClient de Starlette dentro de pytest?",
+      "documento_id_esperado": "testing.md"
+    }
+  ]
+}
