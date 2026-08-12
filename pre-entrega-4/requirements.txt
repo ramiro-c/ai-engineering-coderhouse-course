@@ -30,12 +30,15 @@ langchain-huggingface==1.2.2  # HuggingFaceEmbeddings (interfaz LangChain)
 
 # --- Generación de respuestas con LLM (evolución B, RF-6) ---
 # Factory multi-proveedor en clients/factory.py (patrón de pre-entrega-3):
-#   * gemini     -> langchain-google-genai (ChatGoogleGenerativeAI)
+#   * gemini     -> langchain-google-vertexai (ChatVertexAI, ADC/service account)
 #   * openai     -> langchain-openai (ChatOpenAI; ya declarada arriba)
 #   * anthropic  -> langchain-anthropic (ChatAnthropic)
 #   * openrouter -> langchain-openrouter (ChatOpenRouter)
 # Los imports son lazy: solo hace falta la dep del provider activo.
-langchain-google-genai==4.3.3  # ChatGoogleGenerativeAI (gemini-2.5-flash, provider default)
+# ENMIENDA 2026-08-12 (U7): langchain-google-genai/ChatGoogleGenerativeAI fue
+# reemplazado por Vertex AI (ChatVertexAI + google-cloud-aiplatform).
+langchain-google-vertexai==3.2.4  # ChatVertexAI (gemini-2.5-flash, provider default)
+google-cloud-aiplatform==1.163.0  # SDK de Vertex AI (ADC/service account)
 langchain-anthropic==1.5.5     # ChatAnthropic (claude-3-5-haiku-latest)
 langchain-openrouter==0.2.7    # ChatOpenRouter (cohere/north-mini-code:free)
 

@@ -3,9 +3,16 @@
 Copia adaptada del patrón de pre-entrega-3/clients/factory.py: los mismos
 DEFAULT_MODELS, `_normalize_provider` (provider inválido -> ValueError) y
 `build_chat_model` con imports lazy por provider. El proveedor por defecto
-sale de LLM_PROVIDER (config, default "gemini"); sin API key configurada el
-constructor del modelo se crea igual (el error aparece recién al invocar,
-y responder() lo convierte en answered=False).
+sale de LLM_PROVIDER (config, default "gemini").
+
+ENMIENDA 2026-08-12 (U7): el provider gemini se construye con ChatVertexAI
+(langchain-google-vertexai) autenticando con ADC/service account
+(GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION)
+en lugar de ChatGoogleGenerativeAI/GEMINI_API_KEY. Sin ADC configurado, el
+constructor de ChatVertexAI lanza el error de autenticación al invocarlo; la
+factory NO lo traga: lo propaga para que responder() lo degrade a
+answered=False (RF-6 edge controlado). OpenAI/Anthropic/OpenRouter siguen
+disponibles vía LLM_PROVIDER.
 """
 
 from __future__ import annotations
@@ -16,7 +23,6 @@ from langchain_core.language_models import BaseChatModel
 
 from config import (
     ANTHROPIC_API_KEY,
-    GEMINI_API_KEY,
     LLM_PROVIDER,
     OPENAI_API_KEY,
 )
@@ -61,11 +67,13 @@ def build_chat_model(
         )
 
     if resolved == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
+        from langchain_google_vertexai import ChatVertexAI
 
-        return ChatGoogleGenerativeAI(
-            api_key=GEMINI_API_KEY,
-            model=DEFAULT_MODELS["gemini"],
+        # Vertex AI autentica con ADC/service account: sin api_key. Si falta
+        # el ADC, el constructor lanza DefaultCredentialsError (la factory lo
+        # propaga; responder() lo convierte en answered=False).
+        return ChatVertexAI(
+            model_name=DEFAULT_MODELS["gemini"],
             temperature=temperature,
         )
 

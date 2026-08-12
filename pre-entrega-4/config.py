@@ -46,9 +46,8 @@ INDEX_NAME = _env_str("INDEX_NAME", "pre-entrega-4-rag")
 # --- LLM de generación (evolución B, RF-6/D10) ---
 # Claves por provider; la factory las pasa al constructor del modelo
 # correspondiente. Solo se necesita la del provider activo. El provider
-# gemini pasa a autenticar vía Vertex AI (ADC) en la Fase 7 (U7); la clave
-# GEMINI_API_KEY (Google AI Studio) deja de usarse al migrar la factory.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# gemini autentica vía Vertex AI (ADC, variables GCP abajo) — la clave
+# GEMINI_API_KEY de Google AI Studio dejó de usarse (ENMIENDA U7).
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 # Proveedor por defecto de la factory multi-provider: gemini/openai/
