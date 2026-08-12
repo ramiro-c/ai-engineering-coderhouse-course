@@ -91,14 +91,18 @@ def test_import_embeddings_no_instancia_sin_key():
 
 
 def test_get_embeddings_modelo_y_cache(monkeypatch):
-    """get_embeddings() devuelve una unica instancia con el modelo de config."""
-    monkeypatch.setenv("OPENAI_API_KEY", "dummy-para-tests-unit")
+    """get_embeddings() devuelve una unica instancia con el modelo de config.
+
+    ENMIENDA 2026-08-12 (U7): el cliente pasó de OpenAIEmbeddings (.model) a
+    HuggingFaceEmbeddings local (.model_name, all-MiniLM-L6-v2, 384d) sin API
+    key; la construcción carga el modelo de disco (cacheado) o lo descarga.
+    """
     from embeddings import get_embeddings
 
     primera = get_embeddings()
     segunda = get_embeddings()
     assert primera is segunda  # lru_cache: misma instancia indexar/consultar
-    assert primera.model == EMBEDDING_MODEL
+    assert primera.model_name == EMBEDDING_MODEL
 
 
 # --- Fase 4: wiring de upsert real (upsert_corpus) ---

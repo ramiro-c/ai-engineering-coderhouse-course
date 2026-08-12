@@ -1,11 +1,12 @@
 """Tests unit de init_index.py (Fase 4, sin red): verificación/creación del índice.
 
 Cubren los edges de RF-1 con un stub del cliente de Pinecone: creación con la
-spec Serverless correcta (cloud/región de config, 1536d, cosine) y espera a
+spec Serverless correcta (cloud/región de config, 384d, cosine) y espera a
 READY vía poll, la idempotencia cuando el índice ya existe (no se recrea),
 la advertencia si la dimensión/métrica del índice existente difieren, y el
 fallo claro sin PINECONE_API_KEY antes de cualquier llamada de red (el cliente
-Pinecone ni siquiera se instancia).
+Pinecone ni siquiera se instancia). ENMIENDA 2026-08-12 (U7): la dimensión de
+la spec pasó de 1536 a 384 (embeddings HF locales all-MiniLM-L6-v2).
 """
 
 from __future__ import annotations
@@ -106,7 +107,7 @@ def test_crea_indice_y_espera_ready(monkeypatch):
     assert len(stub.create_calls) == 1
     llamada = stub.create_calls[0]
     assert llamada["name"] == INDEX_NAME
-    assert llamada["dimension"] == DIMENSION == 1536
+    assert llamada["dimension"] == DIMENSION == 384
     assert llamada["metric"] == METRIC == "cosine"
     assert llamada["spec"].cloud == PINECONE_CLOUD == "aws"
     assert llamada["spec"].region == PINECONE_REGION == "us-east-1"
@@ -131,7 +132,7 @@ def test_indice_existente_es_idempotente(monkeypatch):
 def test_indice_existente_con_dim_distinta_advierte(monkeypatch, capsys):
     """Índice existente con dimensión distinta: advertencia clara, sin recrear."""
     stub = _PineconeStub(
-        indice_existente=_IndiceFalso(describes_hasta_ready=1, dimension=384)
+        indice_existente=_IndiceFalso(describes_hasta_ready=1, dimension=1536)
     )
     monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone(stub))
     monkeypatch.setattr(init_index, "PINECONE_API_KEY", "clave-dummy-de-test")
