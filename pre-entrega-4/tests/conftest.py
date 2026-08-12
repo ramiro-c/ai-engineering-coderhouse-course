@@ -9,8 +9,6 @@ módulo), para que la colección de los tests unit no dependa del entorno real.
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from config import OPENAI_API_KEY, PINECONE_API_KEY

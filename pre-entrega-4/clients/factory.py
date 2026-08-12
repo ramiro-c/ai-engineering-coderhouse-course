@@ -19,7 +19,6 @@ from config import (
     GEMINI_API_KEY,
     LLM_PROVIDER,
     OPENAI_API_KEY,
-    OPENROUTER_API_KEY,
 )
 from schemas import ProviderName
 

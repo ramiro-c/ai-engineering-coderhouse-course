@@ -14,7 +14,6 @@ devuelve lista vacía sin excepción (RF-3 edge).
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from pinecone import Pinecone
 from langchain_classic.retrievers import EnsembleRetriever
