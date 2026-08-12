@@ -46,8 +46,15 @@ def init_index(
         )
 
     cliente = pinecone.Pinecone(api_key=PINECONE_API_KEY)
-    descripcion = cliente.describe_index(INDEX_NAME)
-    creado = descripcion is None
+    try:
+        descripcion = cliente.describe_index(INDEX_NAME)
+        creado = False
+    except pinecone.exceptions.NotFoundException:
+        # pinecone 7.3.0 (SDK v6.x): un índice inexistente lanza
+        # NotFoundException (404) — NO devuelve None — y ahí se dispara la
+        # creación (RF-1, idempotente).
+        descripcion = None
+        creado = True
 
     if creado:
         cliente.create_index(
@@ -69,7 +76,13 @@ def init_index(
 
     inicio = time.monotonic()
     while True:
-        estado = cliente.describe_index(INDEX_NAME)
+        try:
+            estado = cliente.describe_index(INDEX_NAME)
+        except pinecone.exceptions.NotFoundException:
+            # Defensivo: el índice recién creado puede tardar en propagarse y
+            # describe_index podría seguir respondiendo 404; se continúa el poll
+            # hasta el timeout, que sí lanza RuntimeError.
+            estado = None
         if estado is not None and estado.status.ready:
             break
         if time.monotonic() - inicio > timeout_segundos:
