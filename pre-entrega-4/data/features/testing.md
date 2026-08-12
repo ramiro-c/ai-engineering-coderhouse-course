@@ -3,6 +3,8 @@
 FastAPI trae integración directa con `TestClient` de Starlette, que permite
 probar los endpoints sin levantar un servidor. Se usa con pytest y se
 puede combinar con la inyección de dependencias para aislar el sistema.
+Los tests se convierten en la red de seguridad que permite refactorizar
+sin romper el contrato de la API.
 
 ## Crear el cliente de test
 
@@ -49,11 +51,29 @@ def test_crear_item(client):
     assert response.json()["nombre"] == "teclado"
 ```
 
+## Verificaciones habituales
+
+| Verificación | Ejemplo |
+|---|---|
+| Código de estado | `assert response.status_code == 201` |
+| Cuerpo exacto | `assert response.json() == {"items": []}` |
+| Campo presente | `assert "id" in response.json()` |
+| Cabecera | `assert response.headers["X-Proceso"] == "ok"` |
+| Error de validación | `assert response.status_code == 422` |
+
 ## Probar errores de validación
 
 Los tests también verifican los errores esperados: un 422 por datos
 inválidos, un 401 por falta de autenticación o un 404 por una ruta
-inexistente.
+inexistente. Validar el camino de error es tan importante como el
+camino feliz, porque documenta el comportamiento real del contrato:
+
+```python
+def test_validacion_item(client):
+    response = client.post("/items", json={})
+    assert response.status_code == 422
+    assert "nombre" in response.text
+```
 
 ## Reemplazar dependencias
 
@@ -65,4 +85,21 @@ al final del test:
 app.dependency_overrides[autenticar] = lambda: "usuario-de-test"
 ```
 
-Esto permite probar endpoints protegidos sin credenciales reales.
+Esto permite probar endpoints protegidos sin credenciales reales y
+sustituir la base de datos por un repositorio en memoria.
+
+## Testing de WebSockets
+
+`TestClient` también cubre conexiones WebSocket con `websocket_connect`:
+
+```python
+def test_websocket(client):
+    with client.websocket_connect("/ws") as ws:
+        ws.send_text("hola")
+        assert ws.receive_text() == "eco: hola"
+```
+
+La suite de tests del proyecto debe correr sin red ni credenciales: las
+llamadas a servicios externos se reemplazan por dobles y los tests de
+integración que sí requieren infraestructura se marcan como `slow` para
+ejecutarlos aparte.

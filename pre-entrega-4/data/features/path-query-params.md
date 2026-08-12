@@ -1,8 +1,9 @@
 # Path y query params en FastAPI
 
 FastAPI valida los parámetros de ruta (path params) y los parámetros de
-consulta (query params) a partir de los tipos que declarás en la firma de
-la función. No hace falta validación manual.
+consulta (query params) a partir de los tipos que se declaran en la firma
+de la función. No hace falta validación manual: el framework convierte,
+valida y documenta cada parámetro automáticamente.
 
 ## Parámetros de ruta tipados
 
@@ -48,8 +49,55 @@ def buscar(q: str | None = None):
 Un query param sin valor por defecto es obligatorio: si el cliente no lo
 envía, FastAPI responde 422 con el detalle del campo faltante.
 
+## Restricciones con Query y Path
+
+Las restricciones de validación se declaran con `Query` y `Path`, que
+aceptan valores mínimos, máximos y patrones:
+
+```python
+from fastapi import Query, Path
+
+@app.get("/items/{item_id}")
+def leer_item(
+    item_id: int = Path(ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
+    q: str | None = Query(default=None, max_length=50),
+):
+    return {"item_id": item_id, "limit": limit, "q": q}
+```
+
+Si el cliente envía `limit=500`, la respuesta es 422 porque excede el
+máximo declarado. Estas restricciones aparecen también en la
+documentación OpenAPI.
+
 ## Conversión de tipos
 
-FastAPI convierte strings de la URL al tipo declarado: `int`, `float`,
-`bool` (acepta `true`, `false`, `1`, `0`) y `datetime`, entre otros. La
-conversión fallida produce un 422 con el detalle del parámetro.
+FastAPI convierte strings de la URL al tipo declarado y documenta la
+conversión en el esquema:
+
+| Tipo | Acepta en la URL |
+|---|---|
+| `int` | enteros (`42`, `-1`) |
+| `float` | decimales (`3.14`) |
+| `bool` | `true`, `false`, `1`, `0`, `on`, `off` |
+| `datetime` | fechas ISO 8601 (`2024-01-01T10:00:00Z`) |
+| `Enum` | solo los valores definidos en la enumeración |
+
+La conversión fallida produce un 422 con el detalle del parámetro.
+
+## Parámetros de cabecera y cookie
+
+Además de path y query, FastAPI lee cabeceras y cookies con los mismos
+mecanismos de tipos:
+
+```python
+from fastapi import Header
+
+@app.get("/items")
+def listar_items(user_agent: str | None = Header(default=None)):
+    return {"user_agent": user_agent}
+```
+
+Los parámetros de cabecera se documentan en OpenAPI y permiten mover la
+configuración de la petición (tokens, ids de correlación, versiones) fuera
+de la URL sin perder la validación automática.

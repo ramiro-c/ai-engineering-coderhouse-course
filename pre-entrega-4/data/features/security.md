@@ -2,12 +2,14 @@
 
 FastAPI integra los mecanismos de seguridad de OpenAPI: HTTP Basic,
 OAuth2 con password flow, bearer tokens y JWT. La autenticación se
-combina con las dependencias para proteger endpoints de forma declarativa.
+combina con las dependencias para proteger endpoints de forma declarativa,
+y cada esquema queda documentado automáticamente en Swagger UI.
 
 ## HTTP Basic
 
 Se usa la clase `HTTPBasic` de Starlette y la credencial se valida
-comparando el usuario y la contraseña con `secrets.compare_digest`:
+comparando el usuario y la contraseña con `secrets.compare_digest`, que
+resiste ataques de timing:
 
 ```python
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -35,6 +37,10 @@ def perfil(token: str = Depends(oauth2)):
     return {"token": token}
 ```
 
+`tokenUrl` señala el endpoint que emite el token, de modo que la
+documentación interactiva ofrece el botón "Authorize" para ingresar las
+credenciales y probar los endpoints protegidos.
+
 ## OAuth2PasswordRequestForm
 
 El formulario de login se recibe con `OAuth2PasswordRequestForm`, que
@@ -53,10 +59,45 @@ def login(form: OAuth2PasswordRequestForm = Depends()):
 
 Los tokens JWT se firman con una librería como PyJWT. El payload contiene
 el subject (`sub`) y la expiración (`exp`), y la firma usa un secreto. La
-dependencia de autenticación decodifica el token y devuelve el usuario.
+dependencia de autenticación decodifica el token y devuelve el usuario:
+
+```python
+import jwt
+
+SECRETO = "clave-secreta-de-prueba"
+
+def crear_token(usuario: str):
+    payload = {"sub": usuario, "exp": datetime.utcnow() + timedelta(minutes=30)}
+    return jwt.encode(payload, SECRETO, algorithm="HS256")
+
+def validar_token(token: str = Depends(oauth2)):
+    return jwt.decode(token, SECRETO, algorithms=["HS256"])
+```
+
+El secreto se lee de una variable de entorno, nunca se hardcodea. La
+expiración limita la ventana de validez del token: al vencer, el cliente
+debe autenticarse de nuevo o usar un refresh token.
+
+## Hash de contraseñas
+
+Las contraseñas nunca se guardan en texto plano. Se hashean con
+algoritmos lentos como bcrypt (passlib) y la verificación se hace contra
+el hash:
+
+```python
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+hash_guardado = pwd_context.hash("mi-clave")
+pwd_context.verify("mi-clave", hash_guardado)  # True
+```
 
 ## Scopes
 
-Los scopes son permisos declarados en el token OAuth2. `OAuth2SecurityScopes`
-permite validar en el endpoint qué scopes debe tener el token para
-autorizar la operación.
+Los scopes son permisos declarados en el token OAuth2.
+`OAuth2SecurityScopes` permite validar en el endpoint qué scopes debe
+tener el token para autorizar la operación: el login emite un token con
+los scopes del usuario y cada endpoint declara los que exige, lo que
+habilita autorización fina (lectura vs escritura) sobre la misma
+autenticación.
