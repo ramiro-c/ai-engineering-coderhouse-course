@@ -42,6 +42,16 @@ def _env_str(name: str, default: str) -> str:
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 INDEX_NAME = _env_str("INDEX_NAME", "pre-entrega-4-rag")
+
+# --- LLM de generación (evolución B, RF-6/D10) ---
+# Claves por provider; la factory las pasa al constructor del modelo
+# correspondiente. Solo se necesita la del provider activo.
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+# Proveedor por defecto de la factory multi-provider: gemini/openai/
+# anthropic/openrouter (patrón de pre-entrega-3).
+LLM_PROVIDER = _env_str("LLM_PROVIDER", "gemini")
 PINECONE_CLOUD = _env_str("PINECONE_CLOUD", "aws")
 PINECONE_REGION = _env_str("PINECONE_REGION", "us-east-1")
 

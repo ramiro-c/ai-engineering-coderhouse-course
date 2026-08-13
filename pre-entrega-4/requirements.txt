@@ -16,9 +16,20 @@ langchain-text-splitters>=1.0  # RecursiveCharacterTextSplitter / MarkdownHeader
 openai==2.53.0               # cliente OpenAI para embeddings
 tiktoken                     # conteo de tokens (cl100k_base) para el chunking
 rank-bm25==0.2.2             # BM25Okapi local para BM25Retriever
-pydantic==2.12.5             # schemas de evaluación (GoldenSet, EvalResult, ...)
+pydantic==2.12.5             # schemas de evaluación (GoldenSet, EvalResult, LlmAnswer)
 python-dotenv                # carga de .env en config.py
 pytest>=8                    # runner de tests (unit + integración marcada slow)
+
+# --- Generación de respuestas con LLM (evolución B, RF-6) ---
+# Factory multi-proveedor en clients/factory.py (patrón de pre-entrega-3):
+#   * gemini     -> langchain-google-genai (ChatGoogleGenerativeAI)
+#   * openai     -> langchain-openai (ChatOpenAI; ya declarada arriba)
+#   * anthropic  -> langchain-anthropic (ChatAnthropic)
+#   * openrouter -> langchain-openrouter (ChatOpenRouter)
+# Los imports son lazy: solo hace falta la dep del provider activo.
+langchain-google-genai==4.3.3  # ChatGoogleGenerativeAI (gemini-2.5-flash, provider default)
+langchain-anthropic==1.5.5     # ChatAnthropic (claude-3-5-haiku-latest)
+langchain-openrouter==0.2.7    # ChatOpenRouter (cohere/north-mini-code:free)
 
 # pinecone-text==0.11.0  # NO usado en el enfoque A; reservado para la evolución B
 #                        # (híbrido server-side nativo de Pinecone, documentada en README)
