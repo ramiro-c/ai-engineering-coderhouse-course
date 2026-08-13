@@ -6,7 +6,8 @@ recuperación **híbrida**: búsqueda léxica local (BM25) + búsqueda semántic
 (RRF)**, sobre un índice **Pinecone Serverless**. La ingesta chunkifica el
 corpus Markdown por tokens (500–800) y la evaluación mide la calidad de la
 recuperación contra un golden set (Recall@5 ≥ 0.8). La generación de respuestas
-(evolución B) usa un LLM vía `clients/factory.py` (default: Gemini en Vertex AI).
+(evolución B) usa un LLM vía `clients/factory.py` (default: `gemini`; también
+`openrouter` para validar/debug).
 
 ## Requisitos
 
@@ -14,8 +15,8 @@ recuperación contra un golden set (Recall@5 ≥ 0.8). La generación de respues
 - Cuenta de [Pinecone](https://www.pinecone.io/) (free tier alcanza)
 - Modelo de embeddings **local** `sentence-transformers/all-MiniLM-L6-v2`
   (384d, HuggingFace): se descarga una sola vez a disco, sin API key
-- (Opcional) Proyecto GCP con Vertex AI + service account con rol
-  *Vertex AI User*, solo para la generación con LLM (provider `gemini`)
+- (Opcional) Credencial LLM para `demo.py` / `responder()`: `GEMINI_API_KEY`,
+  vars GCP (Vertex) u `OPENROUTER_API_KEY` según `LLM_PROVIDER`
 
 ## Inicio rápido (replicar el índice)
 
@@ -23,7 +24,7 @@ recuperación contra un golden set (Recall@5 ≥ 0.8). La generación de respues
 cd pre-entrega-4
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env        # completá PINECONE_API_KEY (y GCP si usás generación)
+cp .env.example .env        # completá PINECONE_API_KEY (+ LLM si usás demo/responder)
 python init_index.py        # crea/verifica el índice Serverless (384d, cosine)
 python ingest.py            # indexa data/ por namespace (idempotente)
 python evaluate.py          # golden set → tabla + promedios + PASS/FAIL
@@ -46,12 +47,15 @@ python evaluate.py          # golden set → tabla + promedios + PASS/FAIL
    `ChatVertexAI` de `langchain-google-vertexai`).
 
 2. **`.env`** — copiá `.env.example` y completá las claves:
-   - `PINECONE_API_KEY`: de api.pinecone.io.
-   - `GOOGLE_APPLICATION_CREDENTIALS` (ruta al JSON de la service account),
-     `GOOGLE_CLOUD_PROJECT` y `GOOGLE_CLOUD_LOCATION`: solo si vas a usar la
-     generación con LLM (provider `gemini`).
+   - `PINECONE_API_KEY`: de api.pinecone.io (obligatorio para indexar/evaluar).
    - `INDEX_NAME=pre-entrega-4-rag` (por defecto; se crea solo).
-   - Los embeddings NO requieren ninguna API key: son locales.
+   - Los embeddings NO requieren API key: son locales (HuggingFace).
+   - Para **generación** (`demo.py`, `responder()`): `LLM_PROVIDER` +
+     la credencial del proveedor activo. Patrón de pre-entrega-3:
+     - `gemini` + `GEMINI_API_KEY` (Developer API, debug rápido), **o**
+     - `gemini` + `GOOGLE_GENAI_USE_VERTEXAI=true` + vars GCP (Vertex/ADC).
+     - `openrouter` + `OPENROUTER_API_KEY` (útil para validar sin Vertex).
+   - `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`: solo si cambiás el provider.
 
 3. **`python init_index.py`** — verifica si el índice Serverless existe y lo
    crea si no (`DIMENSION=384`, métrica `cosine`, región `aws/us-east-1`),
@@ -142,13 +146,15 @@ conocida usa el suyo y una desconocida cae en el fallback `docs`.
 
 | Métrica | Definición | Criterio |
 |---|---|---|
-| **Precision@5** | 1/5 si el documento esperado está en el top-5 | — |
+| **Precision@5** | Con un documento relevante por pregunta: `1/5` si el esperado está en el top-5, `0` si no | — |
 | **Recall@5** | 1 si el documento esperado está en el top-5, 0 si no | **≥ 0.8 promedio** |
 | **MRR** | 1/rango del documento esperado (complemento) | — |
 
-El Recall@5 es a nivel **documento**, no chunk: si `dependencies.md` aporta 3
-chunks al top-5, cuenta como un solo documento. Con 5 preguntas, PASS = 4 o 5
-aciertos.
+El golden set tiene **un** `documento_id_esperado` por pregunta, así que
+Precision@5 mide si ese documento aparece entre los 5 recuperados (no cuántos
+de los 5 son útiles en general). El Recall@5 es a nivel **documento**, no
+chunk: si `dependencies.md` aporta 3 chunks al top-5, cuenta como un solo
+documento. Con 5 preguntas, PASS = 4 o 5 aciertos.
 
 ## Tests
 
@@ -185,9 +191,10 @@ print(respuesta.fuentes)     # ["routing.md", ...]
 print(respuesta.answered)    # True si el contexto alcanzó para responder
 ```
 
-Si no hay contexto suficiente, o si la API del proveedor falla, `responder()`
-devuelve `answered=false` con un mensaje claro y `fuentes=[]`, sin romper el
-flujo (máx 2 reintentos internos ante errores de parseo/API).
+Si no hay contexto suficiente, o si la API del proveedor falla en ambas
+cadenas (A: parser Pydantic con reintentos; B: `with_structured_output`),
+`responder()` devuelve `answered=false` con un mensaje claro y `fuentes=[]`,
+sin romper el flujo.
 
 ### Proveedor del LLM (`LLM_PROVIDER`)
 
@@ -196,19 +203,20 @@ según la variable `LLM_PROVIDER` (default `gemini`):
 
 | `LLM_PROVIDER` | Credencial | Modelo por defecto |
 |---|---|---|
-| `gemini` (default) | Vertex AI / ADC (`GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`) | `gemini-2.5-flash` |
+| `gemini` (default) | `GEMINI_API_KEY` **o** Vertex (`GOOGLE_GENAI_USE_VERTEXAI=true` + vars GCP) | `gemini-2.5-flash` |
 | `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` |
 | `anthropic` | `ANTHROPIC_API_KEY` | `claude-3-5-haiku-latest` |
-| `openrouter` | clave de OpenRouter | `cohere/north-mini-code:free` |
+| `openrouter` | `OPENROUTER_API_KEY` | `cohere/north-mini-code:free` |
 
-> **`gemini` usa Vertex AI, no Google AI Studio.** No se usa `GEMINI_API_KEY`
-> (la key se pasa vacía y el SDK la ignora): `ChatGoogleGenerativeAI`
-> (langchain-google-genai, ENMIENDA 2026-08-13) autentica con ADC/service
-> account cuando `GOOGLE_GENAI_USE_VERTEXAI=TRUE` está en `.env`. Si falta la
-> credencial GCP (o el ADC no resuelve), el error sale al invocar y
-> `responder()` degrada a `answered=false` (edge controlado, sin crash). Solo
-> hace falta la credencial del provider activo (las deps de los demás
-> providers son imports lazy y se instalan en `requirements.txt`).
+> **Gemini: dos modos (patrón de pre-entrega-3).** Por defecto
+> `ChatGoogleGenerativeAI` usa `GEMINI_API_KEY` (Developer API). Si activás
+> `GOOGLE_GENAI_USE_VERTEXAI=true` en `.env`, el SDK autentica con ADC/service
+> account (`GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CLOUD_PROJECT`,
+> `GOOGLE_CLOUD_LOCATION`) e ignora la API key. Para debug rápido o cuando Vertex
+> no está disponible, `GEMINI_API_KEY` alcanza; para evitar 429 del free tier,
+> Vertex. Si falta la credencial del modo activo, el error sale al invocar y
+> `responder()` degrada a `answered=false` (sin crash). Solo hace falta la
+> credencial del provider activo.
 
 > **NOTA — la generación NO participa en la evaluación.** Las métricas
 > (Precision@5/Recall@5/MRR) y el criterio `Recall@5 ≥ 0.8` miden SOLO la
@@ -225,8 +233,11 @@ consola.
 
 ```bash
 cd pre-entrega-4 && source .venv/bin/activate
-HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py "¿Cómo defino un decorador POST en FastAPI?"
-HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py        # REPL: varias preguntas, salir con 'salir'
+HF_HUB_OFFLINE=1 python demo.py "¿Cómo defino un decorador POST en FastAPI?"
+HF_HUB_OFFLINE=1 python demo.py        # REPL: varias preguntas, salir con 'salir'
+
+# Cambiar proveedor sin tocar código (patrón pre-entrega-3):
+LLM_PROVIDER=openrouter HF_HUB_OFFLINE=1 python demo.py "¿Cómo uso Depends?"
 ```
 
 Sin argumento, el script entra en un modo interactivo (REPL) pensado para uso

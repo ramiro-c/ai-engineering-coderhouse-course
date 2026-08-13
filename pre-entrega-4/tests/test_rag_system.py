@@ -16,7 +16,7 @@ import json
 import pytest
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.runnables import RunnableLambda
+from langchain_core.runnables import Runnable, RunnableLambda
 
 import rag_system
 from config import FUENTE_NAMESPACES, NAMESPACE_DEFAULT
@@ -174,20 +174,32 @@ def test_retrieve_fusiona_bm25_y_vectorial_con_rrf_y_dedupe(sistema_con_stubs):
 
 
 def _modelo_llm_fake(salida: dict | None = None, error: Exception | None = None):
-    """RunnableLambda que imita al LLM: devuelve JSON o lanza; registra llamadas.
+    """Fake de chat model: JSON para cadena A y LlmAnswer para cadena B.
 
-    El prompt y el parser Pydantic reales se ejecutan; solo el modelo es fake.
+    Implementa ``with_structured_output`` para que el fallback B sea testeable
+    sin llamar a un proveedor real.
     """
     estado = {"llamadas": 0, "entradas": []}
 
-    def _invoke(mensajes):
-        estado["llamadas"] += 1
-        estado["entradas"].append(mensajes)
-        if error is not None:
-            raise error
-        return json.dumps(salida)
+    class _ChatModelFake(Runnable):
+        def invoke(self, mensajes, config=None, **kwargs):
+            estado["llamadas"] += 1
+            estado["entradas"].append(mensajes)
+            if error is not None:
+                raise error
+            return json.dumps(salida)
 
-    return RunnableLambda(_invoke), estado
+        def with_structured_output(self, schema):
+            def _structured_invoke(mensajes, config=None, **kwargs):
+                estado["llamadas"] += 1
+                estado["entradas"].append(mensajes)
+                if error is not None:
+                    raise error
+                return schema.model_validate(salida)
+
+            return RunnableLambda(_structured_invoke)
+
+    return _ChatModelFake(), estado
 
 
 def _sistema_con_llm(sistema_con_stubs, monkeypatch, modelo, bm25_docs, vs_docs, corpus):
@@ -242,7 +254,7 @@ def test_responder_sin_contexto_no_llama_al_llm(sistema_con_stubs, monkeypatch):
 
 
 def test_responder_error_de_api_devuelve_answered_false(sistema_con_stubs, monkeypatch):
-    """RF-6 edge: error del proveedor -> answered=False sin crash, con reintentos."""
+    """RF-6 edge: error del proveedor -> answered=False sin crash (A reintenta, luego B)."""
     a = _doc("a.md")
     modelo, estado = _modelo_llm_fake(error=RuntimeError("API caída"))
     sistema = _sistema_con_llm(
@@ -254,7 +266,7 @@ def test_responder_error_de_api_devuelve_answered_false(sistema_con_stubs, monke
     assert isinstance(resultado, LlmAnswer)
     assert resultado.answered is False
     assert "no puedo responder" in resultado.respuesta.lower()
-    assert estado["llamadas"] == 3, "1 intento + 2 reintentos máximos"
+    assert estado["llamadas"] == 4, "cadena A: 3 reintentos + cadena B: 1 intento"
 
 
 def test_responder_filtra_fuentes_no_recuperadas(sistema_con_stubs, monkeypatch):
@@ -293,3 +305,68 @@ def test_responder_completa_fuentes_desde_metadata_si_el_llm_no_las_da(
 
     assert resultado.answered is True
     assert set(resultado.fuentes) == {"a.md", "c.md"}
+
+
+class _CadenaFalsa:
+    """Doble mínimo de un Runnable LCEL: responde fijo o lanza."""
+
+    def __init__(
+        self, resultado: LlmAnswer | None = None, error: Exception | None = None
+    ) -> None:
+        self._resultado = resultado
+        self._error = error
+        self.llamadas = 0
+
+    def invoke(self, _payload: dict) -> LlmAnswer:
+        self.llamadas += 1
+        if self._error is not None:
+            raise self._error
+        assert self._resultado is not None
+        return self._resultado
+
+
+def test_generar_cadena_a_ok_no_toca_la_b():
+    """Si la cadena A responde, la B no se ejecuta (patrón pre-entrega-3)."""
+    a = _CadenaFalsa(
+        resultado=LlmAnswer(
+            pregunta="p", respuesta="de A", answered=True, fuentes=["a.md"]
+        )
+    )
+    b = _CadenaFalsa(
+        resultado=LlmAnswer(
+            pregunta="p", respuesta="de B", answered=True, fuentes=["b.md"]
+        )
+    )
+    hits = [_doc("a.md")]
+
+    resultado = RAGSystem()._generar("p", "ctx", hits, cadenas=(a, b))
+
+    assert resultado.respuesta == "de A"
+    assert b.llamadas == 0
+
+
+def test_generar_si_falla_a_responde_b():
+    """Parser Pydantic roto en A -> fallback a with_structured_output en B."""
+    a = _CadenaFalsa(error=ValueError("parser Pydantic no pudo con la salida"))
+    b = _CadenaFalsa(
+        resultado=LlmAnswer(
+            pregunta="p", respuesta="de B", answered=True, fuentes=["a.md"]
+        )
+    )
+    hits = [_doc("a.md")]
+
+    resultado = RAGSystem()._generar("p", "ctx", hits, cadenas=(a, b))
+
+    assert resultado.respuesta == "de B"
+    assert a.llamadas == 1
+    assert b.llamadas == 1
+
+
+def test_generar_si_fallan_ambas_propaga_error():
+    """Si A y B fallan, _generar propaga para que responder() degrade."""
+    a = _CadenaFalsa(error=ValueError("A rota"))
+    b = _CadenaFalsa(error=TimeoutError("B rota"))
+    hits = [_doc("a.md")]
+
+    with pytest.raises(TimeoutError, match="B rota"):
+        RAGSystem()._generar("p", "ctx", hits, cadenas=(a, b))

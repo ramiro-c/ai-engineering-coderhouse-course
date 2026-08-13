@@ -21,6 +21,7 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
 from langchain_pinecone import PineconeVectorStore
 
 from clients.factory import build_chat_model
@@ -41,7 +42,9 @@ from schemas import LlmAnswer
 logger = logging.getLogger(__name__)
 
 # --- Generación de respuestas (evolución B, RF-6/D10) ---
-MAX_REINTENTOS = 2
+# Cadena A: parser Pydantic con reintentos (patrón pre-entrega-3).
+# Cadena B: with_structured_output del proveedor si A falla.
+MAX_ATTEMPTS = 3
 
 NO_SE_RESPONSE = (
     "No puedo responder esta pregunta con el contexto recuperado: no encontré "
@@ -246,15 +249,11 @@ class RAGSystem:
         ordenados = sorted(puntajes, key=puntajes.get, reverse=True)
         return [documentos[doc_id] for doc_id in ordenados[:k]]
 
-    def _armar_cadena(self):
-        """Cadena prompt | modelo | parser Pydantic para generar (lazy).
-
-        El modelo sale de la factory multi-proveedor (clients/factory.py,
-        default LLM_PROVIDER=gemini). El parser exige el JSON estructurado
-        de LlmAnswer.
-        """
+    def _armar_cadena_a(self) -> Runnable:
+        """Cadena A: prompt + modelo + PydanticOutputParser con reintentos."""
+        modelo = build_chat_model()
         parser = PydanticOutputParser(pydantic_object=LlmAnswer)
-        prompt = ChatPromptTemplate.from_messages(
+        prompt_parser = ChatPromptTemplate.from_messages(
             [
                 ("system", PROMPT_SISTEMA),
                 (
@@ -263,25 +262,51 @@ class RAGSystem:
                 ),
             ]
         ).partial(formato=parser.get_format_instructions())
-        return prompt | build_chat_model() | parser
+        return (prompt_parser | modelo | parser).with_retry(
+            stop_after_attempt=MAX_ATTEMPTS
+        )
 
-    def _generar(self, pregunta: str, contexto: str, hits: list[Document]) -> LlmAnswer:
-        """Invoca la cadena con reintentos (máx 2) y sanea las fuentes (RF-6).
+    def _armar_cadena_b(self) -> Runnable:
+        """Cadena B (fallback): with_structured_output nativo del proveedor."""
+        prompt_structured = ChatPromptTemplate.from_messages(
+            [
+                ("system", PROMPT_SISTEMA),
+                ("human", "Contexto:\n{contexto}\n\nPregunta:\n{pregunta}"),
+            ]
+        )
+        return prompt_structured | build_chat_model().with_structured_output(
+            LlmAnswer
+        )
 
-        Si todos los intentos fallan (parseo o API), propaga el último error
-        para que responder() lo convierta en answered=False sin crash.
+    def _generar(
+        self,
+        pregunta: str,
+        contexto: str,
+        hits: list[Document],
+        cadenas: tuple[Runnable, Runnable] | None = None,
+    ) -> LlmAnswer:
+        """Genera con cadena A; si falla, con cadena B; sanea fuentes (RF-6).
+
+        ``cadenas`` permite inyectar dobles en tests (sin red ni credenciales).
+        La cadena B se construye solo si A falla, así los tests con un LLM fake
+        que no implementa ``with_structured_output`` no la necesitan cuando A
+        responde. Si ambas fallan, propaga el error para que responder() degrade
+        a answered=False sin crash.
         """
-        cadena = self._armar_cadena()
-        ultimo_error: Exception | None = None
-        for _ in range(MAX_REINTENTOS + 1):
-            try:
-                respuesta = cadena.invoke({"contexto": contexto, "pregunta": pregunta})
-                return _sanear_fuentes(respuesta, hits)
-            except Exception as exc:  # noqa: BLE001 — reintento ante parse/API
-                ultimo_error = exc
-                logger.warning("Intento de generación fallido: %s", exc)
-        assert ultimo_error is not None
-        raise ultimo_error
+        cadena_a = cadenas[0] if cadenas is not None else self._armar_cadena_a()
+        payload = {"contexto": contexto, "pregunta": pregunta}
+        try:
+            respuesta = cadena_a.invoke(payload)
+            return _sanear_fuentes(respuesta, hits)
+        except Exception as exc:  # noqa: BLE001 — fallback a cadena B
+            logger.warning("Cadena A (parser Pydantic) falló: %s", exc)
+        cadena_b = cadenas[1] if cadenas is not None else self._armar_cadena_b()
+        try:
+            respuesta = cadena_b.invoke(payload)
+            return _sanear_fuentes(respuesta, hits)
+        except Exception as exc:
+            logger.exception("Cadena B (with_structured_output) falló")
+            raise exc
 
     def responder(
         self,
@@ -295,9 +320,9 @@ class RAGSystem:
         answered=False sin llamar al LLM (patrón pre-entrega-3); si hay, arma
         el contexto con los chunks y su metadata (document_id para citar),
         genera con la factory multi-proveedor y un prompt estricto en español
-        neutro, y parsea la salida con PydanticOutputParser. Ante errores de
-        API o parseo reintenta (máx 2) y, si siguen fallando, devuelve
-        answered=False sin crash (RF-6 edge).
+        neutro. Cadena A (PydanticOutputParser + reintentos); si falla, cadena B
+        (with_structured_output). Ante error en ambas, devuelve answered=False
+        sin crash (RF-6 edge).
         """
         hits = self.retrieve(pregunta, k=k, namespace=namespace)
         if not hits:

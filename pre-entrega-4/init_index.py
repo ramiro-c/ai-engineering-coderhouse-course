@@ -1,7 +1,7 @@
 """Verificación/creación del índice Serverless de la pre-entrega 4 (Fase 4).
 
 init_index() es idempotente (RF-1): si el índice config.INDEX_NAME no existe,
-lo crea con la spec Serverless (cloud/región de config, DIMENSION=1536,
+lo crea con la spec Serverless (cloud/región de config, config.DIMENSION,
 métrica cosine) y hace poll hasta el estado READY; si existe, verifica
 dimensión/métrica (advertencia si difieren) y continúa sin recrear. Sin
 PINECONE_API_KEY sale con mensaje claro antes de tocar la red (SystemExit
