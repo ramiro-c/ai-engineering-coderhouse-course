@@ -223,12 +223,15 @@ consola.
 ```bash
 cd pre-entrega-4 && source .venv/bin/activate
 HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py "¿Cómo defino un decorador POST en FastAPI?"
-python3 pre-entrega-4/demo.py        # sin argumento: pregunta por prompt interactivo
+HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py        # REPL: varias preguntas, salir con 'salir'
 ```
 
-Sin argumento, el script pide la pregunta por prompt (Enter usa la pregunta
-de ejemplo del corpus). Si el LLM no puede responder (`answered=false`:
-contexto insuficiente o error del proveedor), imprime un mensaje claro de
-degradación sin romper el flujo. La demo es un script en archivo
-(deliberadamente, lección #866: `load_dotenv` no resuelve `.env` desde
-`python3 -c`), así que ve las claves del `.env` como el resto de los CLIs.
+Sin argumento, el script entra en un modo interactivo (REPL) pensado para uso
+natural: escribe una pregunta, Enter consulta, y repetí hasta escribir
+`salir`, `exit`, `q` (o Ctrl+C / Ctrl+D). Con argumento CLI responde esa
+única pregunta y termina (útil para scripts). Si el LLM no puede responder
+(`answered=false`: contexto insuficiente o error del proveedor), imprime un
+mensaje claro de degradación sin romper el flujo. La demo es un script en
+archivo (deliberadamente, lección #866: `load_dotenv` no resuelve `.env`
+desde `python3 -c`), así que ve las claves del `.env` como el resto de los
+CLIs.
