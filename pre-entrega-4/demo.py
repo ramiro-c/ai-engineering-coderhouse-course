@@ -6,8 +6,13 @@ score de posición), genera la respuesta con el proveedor LLM configurado
 (LLM_PROVIDER, default gemini vía Vertex AI) e imprime todo en consola.
 
 Uso:
-    HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py "¿Cómo defino un decorador POST en FastAPI?"
-    python3 pre-entrega-4/demo.py        # sin argumento: pregunta por prompt interactivo
+    HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py                  # REPL: varias preguntas, salir con 'salir'
+    HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py "¿Cómo defino un decorador POST en FastAPI?"  # una pregunta y termina
+
+Sin argumento CLI, la demo entra en un modo interactivo (REPL) pensado para
+uso humano natural: escribe una pregunta, Enter para consultar, y repite
+hasta escribir 'salir', 'exit', 'q' (o Ctrl+C / Ctrl+D). Con argumento CLI,
+responde esa única pregunta y termina (para scripts).
 
 Imports lazy: importar este módulo NO instancia RAGSystem, embeddings ni el
 chat model (todo se construye recién dentro de main(); la lección #866 —
@@ -25,8 +30,11 @@ import sys
 from config import RRF_C, TOP_K
 
 # Pregunta de ejemplo del corpus (decoradores de rutas en FastAPI): se usa
-# cuando no se pasa argumento CLI y el prompt interactivo queda vacío.
+# cuando no se pasa argumento CLI.
 PREGUNTA_DEFAULT = "¿Cómo defino un decorador POST en FastAPI?"
+
+# Comandos de salida del REPL (case-insensitive, con espacios alrededor).
+_COMANDOS_SALIDA = {"salir", "exit", "quit", "q", "s"}
 
 
 def _score_desde_rango(rango: int, c: int = RRF_C) -> float:
@@ -40,17 +48,18 @@ def _score_desde_rango(rango: int, c: int = RRF_C) -> float:
 
 
 def _obtener_pregunta(argv: list[str]) -> str:
-    """Pregunta desde el argumento CLI; si no, desde el prompt interactivo.
+    """Pregunta desde el argumento CLI; si no, la del corpus.
 
-    Prioridad: argumento de sys.argv > input() > PREGUNTA_DEFAULT (una
-    pregunta del corpus para que la demo siempre pueda arrancar).
+    Prioridad: argumento de sys.argv > PREGUNTA_DEFAULT. El input
+    interactivo vive en el REPL (_modo_interactivo), no aquí.
     """
-    if argv:
-        por_argumento = " ".join(argv).strip()
-        if por_argumento:
-            return por_argumento
-    pregunta = input("Pregunta para el RAG (Enter usa el ejemplo): ").strip()
-    return pregunta or PREGUNTA_DEFAULT
+    por_argumento = " ".join(argv).strip()
+    return por_argumento or PREGUNTA_DEFAULT
+
+
+def _es_comando_salida(texto: str) -> bool:
+    """¿El texto es un comando de salida del REPL? (salir/exit/q/s...)."""
+    return texto.strip().lower() in _COMANDOS_SALIDA
 
 
 def _formatear_hits(hits) -> str:
@@ -89,10 +98,46 @@ def _imprimir_respuesta(respuesta) -> None:
     print(f"Fuentes: {fuentes}")
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Corre la demo end-to-end: retrieve top-k + responder, en consola.
+def _correr_una_pregunta(rag, pregunta: str) -> None:
+    """Consulta completa para una pregunta: retrieve top-k + responder + salida."""
+    print(f"\nPregunta: {pregunta}\n")
+    hits = rag.retrieve(pregunta, k=TOP_K)
+    print("--- Top 5 recuperado (RRF híbrido, a nivel documento) ---")
+    print(_formatear_hits(hits) if hits else "  (sin coincidencias)")
 
-    - pregunta: argumento CLI o prompt interactivo (con default del corpus).
+    _imprimir_respuesta(rag.responder(pregunta))
+
+
+def _modo_interactivo(rag) -> int:
+    """REPL: varias preguntas seguidas hasta que el humano sale.
+
+    - input() con prompt "Pregunta: "; Enter vacío vuelve a preguntar.
+    - 'salir', 'exit', 'quit', 'q' o 's' termina (case-insensitive).
+    - Ctrl+C (KeyboardInterrupt) y Ctrl+D (EOFError) terminan con despedida.
+    - Nunca crashea: el error de lectura de input no rompe la demo.
+    """
+    print("Demo RAG pre-entrega-4 — escribí una pregunta o 'salir' para terminar.")
+    while True:
+        try:
+            texto = input("\nPregunta: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nHasta luego.")
+            return 0
+        if not texto:
+            print("(Pregunta vacía — escribí algo o 'salir'.)")
+            continue
+        if _es_comando_salida(texto):
+            print("Hasta luego.")
+            return 0
+        _correr_una_pregunta(rag, texto)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Corre la demo: una pregunta (CLI) o REPL interactivo, en consola.
+
+    - con argumento CLI: responde esa pregunta y termina (uso scriptable).
+    - sin argumento: entra al REPL _modo_interactivo (uso humano natural,
+      varias preguntas, salir con 'salir'/Ctrl+C/Ctrl+D).
     - top-k: retrieve() híbrido (BM25 + Pinecone, RRF) con dedupe a nivel
       documento; se imprime con document_id/score y el rank 1 destacado.
     - respuesta: responder() -> LlmAnswer; si answered=False se imprime la
@@ -105,15 +150,10 @@ def main(argv: list[str] | None = None) -> int:
     from rag_system import RAGSystem
 
     args = list(sys.argv[1:] if argv is None else argv)
-    pregunta = _obtener_pregunta(args)
-    print(f"Pregunta: {pregunta}\n")
-
     rag = RAGSystem()
-    hits = rag.retrieve(pregunta, k=TOP_K)
-    print("--- Top 5 recuperado (RRF híbrido, a nivel documento) ---")
-    print(_formatear_hits(hits) if hits else "  (sin coincidencias)")
-
-    _imprimir_respuesta(rag.responder(pregunta))
+    if not args:
+        return _modo_interactivo(rag)
+    _correr_una_pregunta(rag, _obtener_pregunta(args))
     return 0
 
 

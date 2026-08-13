@@ -159,7 +159,7 @@ def test_main_salida_muestra_document_ids_y_rank_1_destacado(monkeypatch, capsys
     assert "mejor coincidencia" in salida  # el rank 1 se destaca
 
 
-# --- Obtencion de la pregunta (CLI > prompt > default) ---
+# --- Obtencion de la pregunta (CLI > default; el REPL maneja su propio input) ---
 
 
 def test_obtener_pregunta_usa_argumento_cli():
@@ -167,15 +167,143 @@ def test_obtener_pregunta_usa_argumento_cli():
     assert pregunta == "¿Cómo defino un decorador?"
 
 
-def test_obtener_pregunta_sin_argumento_pide_por_prompt(monkeypatch):
-    monkeypatch.setattr("builtins.input", lambda *args: "¿pregunta interactiva?")
-    assert demo._obtener_pregunta([]) == "¿pregunta interactiva?"
+def test_obtener_pregunta_sin_argumento_usa_default_del_corpus():
+    """Sin argumento CLI, la demo en modo una-pregunta usa el ejemplo del corpus.
 
-
-def test_obtener_pregunta_input_vacio_usa_default_del_corpus(monkeypatch):
-    monkeypatch.setattr("builtins.input", lambda *args: "")
+    El input interactivo vive en el REPL (_modo_interactivo), no aqui.
+    """
     assert demo._obtener_pregunta([]) == demo.PREGUNTA_DEFAULT
     assert demo.PREGUNTA_DEFAULT == PREGUNTA_EJEMPLO
+
+
+# --- Comandos de salida del modo interactivo (uso natural por humano) ---
+
+
+@pytest.mark.parametrize(
+    "texto",
+    ["salir", "exit", "quit", "q", "s", "SALIR", " Salir ", "EXIT", "q "],
+)
+def test_es_comando_salida_reconoce_variantes(texto):
+    """El humano puede salir del REPL con varias palabras, mayus/minus y espacios."""
+    assert demo._es_comando_salida(texto)
+
+
+@pytest.mark.parametrize(
+    "texto", ["", "¿Cómo defino un POST?", "hola", "salir ahora", "salida"]
+)
+def test_es_comando_salida_rechaza_no_comandos(texto):
+    """Frases que no son comandos de salida (incluso 'salida' y prefijos)."""
+    assert not demo._es_comando_salida(texto)
+
+
+# --- Modo interactivo (REPL): varias preguntas hasta salir ---
+
+
+def test_modo_interactivo_hace_loop_hasta_salir(monkeypatch, capsys):
+    """El REPL pregunta -> retrieve/responder -> vuelve a preguntar hasta 'salir'."""
+    respuesta = LlmAnswer(
+        pregunta="¿pregunta uno?", respuesta="r1", answered=True, fuentes=["routing.md"]
+    )
+    stub = _stubear_rag(monkeypatch, hits=[_DocumentoStub("routing.md")], respuesta=respuesta)
+    entradas = iter(["¿pregunta uno?", "salir"])
+    monkeypatch.setattr("builtins.input", lambda *a: next(entradas))
+
+    codigo = demo._modo_interactivo(stub)
+
+    assert codigo == 0
+    assert stub.llamadas["retrieve"] == 1
+    assert stub.llamadas["responder"] == 1
+    salida = capsys.readouterr().out
+    assert "¿pregunta uno?" in salida
+    assert "r1" in salida
+    assert "Hasta luego" in salida  # despedida al salir
+
+
+def test_modo_interactivo_acepta_varias_preguntas(monkeypatch, capsys):
+    """Dos preguntas antes de salir -> retrieve/responder corre dos veces."""
+    respuesta = LlmAnswer(pregunta="p", respuesta="r", answered=True, fuentes=[])
+    stub = _stubear_rag(monkeypatch, hits=[], respuesta=respuesta)
+    entradas = iter(["¿primera?", "¿segunda?", "exit"])
+    monkeypatch.setattr("builtins.input", lambda *a: next(entradas))
+
+    demo._modo_interactivo(stub)
+
+    assert stub.llamadas["retrieve"] == 2
+    assert stub.llamadas["responder"] == 2
+
+
+def test_modo_interactivo_input_vacio_sigue_sin_llamar(monkeypatch, capsys):
+    """Enter vacio no llama al RAG y vuelve a preguntar (no crashea)."""
+    respuesta = LlmAnswer(pregunta="p", respuesta="r", answered=True, fuentes=[])
+    stub = _stubear_rag(monkeypatch, hits=[], respuesta=respuesta)
+    entradas = iter(["", "salir"])
+    monkeypatch.setattr("builtins.input", lambda *a: next(entradas))
+
+    codigo = demo._modo_interactivo(stub)
+
+    assert codigo == 0
+    assert stub.llamadas["retrieve"] == 0
+    assert "Pregunta vacía" in capsys.readouterr().out
+
+
+def test_modo_interactivo_eof_termina_sin_crash(monkeypatch, capsys):
+    """Ctrl+D (EOF) termina la demo limpiamente, sin crash."""
+    stub = _RAGSystemStub(hits=[], respuesta=None)
+
+    def _eof(*_a):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", _eof)
+
+    assert demo._modo_interactivo(stub) == 0
+    assert "Hasta luego" in capsys.readouterr().out
+
+
+def test_modo_interactivo_ctrl_c_termina_sin_crash(monkeypatch, capsys):
+    """Ctrl+C (KeyboardInterrupt) termina la demo limpiamente, sin crash."""
+    stub = _RAGSystemStub(hits=[], respuesta=None)
+
+    def _ctrl_c(*_a):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("builtins.input", _ctrl_c)
+
+    assert demo._modo_interactivo(stub) == 0
+    assert "Hasta luego" in capsys.readouterr().out
+
+
+def test_main_sin_argumentos_entra_modo_interactivo(monkeypatch):
+    """main([]) sin argumentos delega en el REPL (uso natural, no una sola pregunta)."""
+    stub = _RAGSystemStub(hits=[], respuesta=None)
+    monkeypatch.setattr(rag_system, "RAGSystem", lambda **kwargs: stub)
+    llamado = {"n": 0}
+
+    def _fake_interactivo(rag):
+        llamado["n"] += 1
+        assert rag is stub
+        return 0
+
+    monkeypatch.setattr(demo, "_modo_interactivo", _fake_interactivo)
+
+    assert demo.main([]) == 0
+    assert llamado["n"] == 1
+
+
+def test_main_con_argumento_usa_una_pregunta_no_repl(monkeypatch, capsys):
+    """Con argumento CLI la demo responde una pregunta y termina (sin REPL)."""
+    respuesta = LlmAnswer(pregunta="p", respuesta="r", answered=True, fuentes=[])
+    _stubear_rag(monkeypatch, hits=[], respuesta=respuesta)
+    llamado = {"n": 0}
+
+    def _no_debe_llamarse(*_a):
+        llamado["n"] += 1
+        return 0
+
+    monkeypatch.setattr(demo, "_modo_interactivo", _no_debe_llamarse)
+
+    assert demo.main(["¿pregunta puntual?"]) == 0
+    assert llamado["n"] == 0
+    assert "r" in capsys.readouterr().out
 
 
 # --- Score RRF de posicion (misma formula que rrf_combine) ---
