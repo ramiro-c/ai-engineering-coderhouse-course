@@ -45,8 +45,9 @@ INDEX_NAME = _env_str("INDEX_NAME", "pre-entrega-4-rag")
 
 # --- LLM de generación (evolución B, RF-6/D10) ---
 # Claves por provider; la factory las pasa al constructor del modelo
-# correspondiente. Solo se necesita la del provider activo.
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# correspondiente. Solo se necesita la del provider activo. El provider
+# gemini autentica vía Vertex AI (ADC, variables GCP abajo) — la clave
+# GEMINI_API_KEY de Google AI Studio dejó de usarse (ENMIENDA U7).
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 # Proveedor por defecto de la factory multi-provider: gemini/openai/
@@ -55,11 +56,24 @@ LLM_PROVIDER = _env_str("LLM_PROVIDER", "gemini")
 PINECONE_CLOUD = _env_str("PINECONE_CLOUD", "aws")
 PINECONE_REGION = _env_str("PINECONE_REGION", "us-east-1")
 
+# --- Credenciales GCP (generación vía Vertex AI, ENMIENDA 2026-08-12) ---
+# ChatVertexAI autentica con ADC/service account: GOOGLE_APPLICATION_CREDENTIALS
+# apunta al JSON de la service account (rol Vertex AI User) y las otras dos
+# fijan el proyecto y la región de Vertex. Sin ellas, la construcción del
+# modelo falla y responder() degrada a answered=false (RF-6 edge).
+GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
+GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION")
+
 # --- Embeddings ---
-EMBEDDING_MODEL = _env_str("EMBEDDING_MODEL", "text-embedding-3-small")
-# text-embedding-3-small produce vectores de 1536 dimensiones; el índice DEBE
-# crearse con la misma dimensión (regla de validación de la consigna).
-DIMENSION = 1536
+# ENMIENDA 2026-08-12 (U7): embeddings LOCALES HuggingFace
+# sentence-transformers/all-MiniLM-L6-v2 (384d, mismo modelo de pre-entrega-3),
+# sin API key. El modelo se descarga una vez a disco y luego se cachea.
+EMBEDDING_MODEL = _env_str("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+# all-MiniLM-L6-v2 produce vectores de 384 dimensiones; el índice DEBE crearse
+# con la misma dimensión (regla de validación de la consigna: un mismatch
+# embeddings<->índice es el error a evitar; el índice 1536d previo se recrea).
+DIMENSION = 384
 METRIC = "cosine"
 
 # --- Chunking (medido en tokens, rango 500-800 de la consigna) ---

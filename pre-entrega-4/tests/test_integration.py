@@ -1,11 +1,13 @@
-"""Tests de integración (slow) — índice Pinecone real y embeddings de OpenAI.
+"""Tests de integración (slow) — índice Pinecone real y embeddings HF locales.
 
 Cubren los happy paths de RF-2/RF-3 contra el índice Serverless real: la
 ingesta es idempotente (re-indexar no duplica vectores porque los chunk_ids
 son deterministas, D5) y el retrieve devuelve top-5 con metadata completa
 para citar (texto original vía text_key="texto", D4, y document_id/source).
-También verifican el aislamiento por namespace (D7). Se saltean sin
-PINECONE_API_KEY/OPENAI_API_KEY (fixtures de conftest).
+También verifican el aislamiento por namespace (D7). ENMIENDA 2026-08-12
+(U7): los embeddings son locales HuggingFace all-MiniLM-L6-v2 (384d) — sin
+OPENAI_API_KEY — y el índice real debe estar recreado a 384d (el orquestador
+lo hace en el harness); se saltean si no (gate de conftest).
 """
 
 from __future__ import annotations

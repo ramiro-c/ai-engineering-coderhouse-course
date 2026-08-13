@@ -11,23 +11,34 @@ langchain-pinecone==0.2.13   # PineconeVectorStore (namespace, text_key, ids)
 langchain-community==0.4.2   # BM25Retriever (rank_bm25 local)
 langchain-classic>=1.0.7     # EnsembleRetriever (RRF); import desde langchain_classic.retrievers
 langchain==1.3.14            # framework base
-langchain-openai==1.4.2      # OpenAIEmbeddings (text-embedding-3-small)
+langchain-openai==1.4.2      # ChatOpenAI (provider openai de la factory; YA NO para embeddings)
 langchain-text-splitters>=1.0  # RecursiveCharacterTextSplitter / MarkdownHeaderTextSplitter
-openai==2.53.0               # cliente OpenAI para embeddings
+openai==2.53.0               # cliente OpenAI para el provider openai de la factory
 tiktoken                     # conteo de tokens (cl100k_base) para el chunking
 rank-bm25==0.2.2             # BM25Okapi local para BM25Retriever
 pydantic==2.12.5             # schemas de evaluación (GoldenSet, EvalResult, LlmAnswer)
 python-dotenv                # carga de .env en config.py
 pytest>=8                    # runner de tests (unit + integración marcada slow)
 
+# --- Embeddings locales HuggingFace (ENMIENDA 2026-08-12, U7) ---
+# get_embeddings() usa HuggingFaceEmbeddings con sentence-transformers
+# all-MiniLM-L6-v2 (384d, mismo modelo de pre-entrega-3): local, sin API key.
+# El modelo se descarga una vez a disco (HF_HUB_OFFLINE=1 para offline).
+sentence-transformers==5.7.0  # modelo y tokenizer de embeddings (all-MiniLM-L6-v2)
+torch==2.13.0                 # backend de inferencia de sentence-transformers
+langchain-huggingface==1.2.2  # HuggingFaceEmbeddings (interfaz LangChain)
+
 # --- Generación de respuestas con LLM (evolución B, RF-6) ---
 # Factory multi-proveedor en clients/factory.py (patrón de pre-entrega-3):
-#   * gemini     -> langchain-google-genai (ChatGoogleGenerativeAI)
+#   * gemini     -> langchain-google-vertexai (ChatVertexAI, ADC/service account)
 #   * openai     -> langchain-openai (ChatOpenAI; ya declarada arriba)
 #   * anthropic  -> langchain-anthropic (ChatAnthropic)
 #   * openrouter -> langchain-openrouter (ChatOpenRouter)
 # Los imports son lazy: solo hace falta la dep del provider activo.
-langchain-google-genai==4.3.3  # ChatGoogleGenerativeAI (gemini-2.5-flash, provider default)
+# ENMIENDA 2026-08-12 (U7): langchain-google-genai/ChatGoogleGenerativeAI fue
+# reemplazado por Vertex AI (ChatVertexAI + google-cloud-aiplatform).
+langchain-google-vertexai==3.2.4  # ChatVertexAI (gemini-2.5-flash, provider default)
+google-cloud-aiplatform==1.163.0  # SDK de Vertex AI (ADC/service account)
 langchain-anthropic==1.5.5     # ChatAnthropic (claude-3-5-haiku-latest)
 langchain-openrouter==0.2.7    # ChatOpenRouter (cohere/north-mini-code:free)
 

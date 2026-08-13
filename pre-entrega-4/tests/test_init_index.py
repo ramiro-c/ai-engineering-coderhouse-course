@@ -1,11 +1,12 @@
 """Tests unit de init_index.py (Fase 4, sin red): verificación/creación del índice.
 
 Cubren los edges de RF-1 con un stub del cliente de Pinecone: creación con la
-spec Serverless correcta (cloud/región de config, 1536d, cosine) y espera a
+spec Serverless correcta (cloud/región de config, 384d, cosine) y espera a
 READY vía poll, la idempotencia cuando el índice ya existe (no se recrea),
 la advertencia si la dimensión/métrica del índice existente difieren, y el
 fallo claro sin PINECONE_API_KEY antes de cualquier llamada de red (el cliente
-Pinecone ni siquiera se instancia).
+Pinecone ni siquiera se instancia). ENMIENDA 2026-08-12 (U7): la dimensión de
+la spec pasó de 1536 a 384 (embeddings HF locales all-MiniLM-L6-v2).
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import pytest
 
 import init_index
 from config import DIMENSION, INDEX_NAME, METRIC, PINECONE_CLOUD, PINECONE_REGION
+from pinecone.exceptions import NotFoundException
 
 
 class _Status:
@@ -39,7 +41,7 @@ class _IndiceFalso:
 
 
 class _PineconeStub:
-    """Stub del cliente: describe_index (None si no existe) y create_index."""
+    """Stub del cliente: describe_index (NotFoundException si no existe) y create_index."""
 
     def __init__(self, indice_existente: _IndiceFalso | None = None):
         self.indices: dict[str, _IndiceFalso] = {}
@@ -51,8 +53,13 @@ class _PineconeStub:
     def describe_index(self, nombre: str):
         self.describes += 1
         indice = self.indices.get(nombre)
-        if indice is not None:
-            indice.avanzar()
+        if indice is None:
+            # Semántica real de pinecone 7.3.0 (SDK v6.x): un índice inexistente
+            # lanza pinecone.exceptions.NotFoundException (404), NO devuelve None.
+            raise NotFoundException(
+                status=404, reason=f"Resource {nombre} not found"
+            )
+        indice.avanzar()
         return indice
 
     def create_index(self, name, dimension, metric, spec):
@@ -70,12 +77,20 @@ class _ServerlessSpecFalso:
         self.region = region
 
 
+class _ExceptionsFalso:
+    """Estructura pinecone.exceptions del paquete real (verificado en 7.3.0):
+    expone NotFoundException para que init_index la capte en el except."""
+
+    NotFoundException = NotFoundException
+
+
 class _ModuloPinecone:
     """Módulo pinecone stub: Pinecone() devuelve SIEMPRE la instancia del test."""
 
     def __init__(self, cliente: _PineconeStub):
         self._cliente = cliente
         self.ServerlessSpec = _ServerlessSpecFalso
+        self.exceptions = _ExceptionsFalso()
 
     def Pinecone(self, api_key=None):
         return self._cliente
@@ -92,7 +107,7 @@ def test_crea_indice_y_espera_ready(monkeypatch):
     assert len(stub.create_calls) == 1
     llamada = stub.create_calls[0]
     assert llamada["name"] == INDEX_NAME
-    assert llamada["dimension"] == DIMENSION == 1536
+    assert llamada["dimension"] == DIMENSION == 384
     assert llamada["metric"] == METRIC == "cosine"
     assert llamada["spec"].cloud == PINECONE_CLOUD == "aws"
     assert llamada["spec"].region == PINECONE_REGION == "us-east-1"
@@ -117,7 +132,7 @@ def test_indice_existente_es_idempotente(monkeypatch):
 def test_indice_existente_con_dim_distinta_advierte(monkeypatch, capsys):
     """Índice existente con dimensión distinta: advertencia clara, sin recrear."""
     stub = _PineconeStub(
-        indice_existente=_IndiceFalso(describes_hasta_ready=1, dimension=384)
+        indice_existente=_IndiceFalso(describes_hasta_ready=1, dimension=1536)
     )
     monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone(stub))
     monkeypatch.setattr(init_index, "PINECONE_API_KEY", "clave-dummy-de-test")
@@ -127,6 +142,27 @@ def test_indice_existente_con_dim_distinta_advierte(monkeypatch, capsys):
     assert stub.create_calls == []
     assert "ATENCIÓN" in capsys.readouterr().err
     assert resumen["creado"] is False
+
+
+def test_poll_tolera_not_found_hasta_timeout(monkeypatch):
+    """Defensivo: si describe_index sigue lanzando NotFound tras crear (el índice
+    tarda en propagarse), el poll continúa esperando y el timeout devuelve
+    RuntimeError — no la excepción cruda de la SDK."""
+
+    class _StubSiempreNotFound(_PineconeStub):
+        def describe_index(self, nombre: str):
+            self.describes += 1
+            # El índice nunca llega a ser visible: describe siempre lanza 404.
+            raise NotFoundException(
+                status=404, reason=f"Resource {nombre} not found"
+            )
+
+    stub = _StubSiempreNotFound()
+    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone(stub))
+    monkeypatch.setattr(init_index, "PINECONE_API_KEY", "clave-dummy-de-test")
+
+    with pytest.raises(RuntimeError, match="no quedó READY"):
+        init_index.init_index(timeout_segundos=0.01, poll_intervalo=0)
 
 
 def test_sin_api_key_sale_sin_red(monkeypatch, capsys):

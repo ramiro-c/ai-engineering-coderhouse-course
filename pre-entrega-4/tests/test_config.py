@@ -58,8 +58,21 @@ def test_constantes_rng_por_defecto():
     assert config.CHUNK_OVERLAP == 100
     assert config.TOP_K == 5
     assert config.RRF_C == 60
-    assert config.DIMENSION == 1536
+    # ENMIENDA 2026-08-12 (U7): embeddings HF locales all-MiniLM-L6-v2 -> 384d.
+    assert config.DIMENSION == 384
     assert config.NAMESPACE_DEFAULT == "docs"
+
+
+def test_gcp_vars_de_vertex_expuestas():
+    """ENMIENDA 2026-08-12 (U7): config expone las variables de Vertex AI.
+
+    ChatVertexAI autentica vía ADC/service account: config carga las 3
+    variables GCP que ya están en pre-entrega-4/.env y las deja disponibles
+    para el resto del pipeline (sin exponer sus valores).
+    """
+    assert hasattr(config, "GOOGLE_APPLICATION_CREDENTIALS")
+    assert hasattr(config, "GOOGLE_CLOUD_PROJECT")
+    assert hasattr(config, "GOOGLE_CLOUD_LOCATION")
 
 
 def test_fuente_namespaces_mapea_carpetas():
