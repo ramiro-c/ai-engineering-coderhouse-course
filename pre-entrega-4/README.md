@@ -41,8 +41,9 @@ python evaluate.py          # golden set → tabla + promedios + PASS/FAIL
    `langchain-community==0.4.2` (BM25Retriever), `langchain-classic`
    (EnsembleRetriever), `tiktoken`, `rank-bm25`, y las dependencias de la
    enmienda: `sentence-transformers` + `torch` + `langchain-huggingface`
-   (embeddings locales) y `langchain-google-vertexai` + `google-cloud-aiplatform`
-   (generación vía Vertex).
+   (embeddings locales) y `langchain-google-genai` (generación vía Vertex,
+   ENMIENDA 2026-08-13: `ChatGoogleGenerativeAI` reemplaza al deprecado
+   `ChatVertexAI` de `langchain-google-vertexai`).
 
 2. **`.env`** — copiá `.env.example` y completá las claves:
    - `PINECONE_API_KEY`: de api.pinecone.io.
@@ -200,12 +201,14 @@ según la variable `LLM_PROVIDER` (default `gemini`):
 | `anthropic` | `ANTHROPIC_API_KEY` | `claude-3-5-haiku-latest` |
 | `openrouter` | clave de OpenRouter | `cohere/north-mini-code:free` |
 
-> **`gemini` usa Vertex AI, no Google AI Studio.** No se usa `GEMINI_API_KEY`:
-> `ChatVertexAI` autentica con ADC/service account. Si falta la credencial GCP
-> (o el ADC no resuelve), la construcción del modelo falla y `responder()`
-> degrada a `answered=false` (edge controlado, sin crash). Solo hace falta la
-> credencial del provider activo (las deps de los demás providers son imports
-> lazy y se instalan en `requirements.txt`).
+> **`gemini` usa Vertex AI, no Google AI Studio.** No se usa `GEMINI_API_KEY`
+> (la key se pasa vacía y el SDK la ignora): `ChatGoogleGenerativeAI`
+> (langchain-google-genai, ENMIENDA 2026-08-13) autentica con ADC/service
+> account cuando `GOOGLE_GENAI_USE_VERTEXAI=TRUE` está en `.env`. Si falta la
+> credencial GCP (o el ADC no resuelve), el error sale al invocar y
+> `responder()` degrada a `answered=false` (edge controlado, sin crash). Solo
+> hace falta la credencial del provider activo (las deps de los demás
+> providers son imports lazy y se instalan en `requirements.txt`).
 
 > **NOTA — la generación NO participa en la evaluación.** Las métricas
 > (Precision@5/Recall@5/MRR) y el criterio `Recall@5 ≥ 0.8` miden SOLO la
