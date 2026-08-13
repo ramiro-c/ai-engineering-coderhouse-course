@@ -98,9 +98,16 @@ def _imprimir_respuesta(respuesta) -> None:
     print(f"Fuentes: {fuentes}")
 
 
-def _correr_una_pregunta(rag, pregunta: str) -> None:
-    """Consulta completa para una pregunta: retrieve top-k + responder + salida."""
-    print(f"\nPregunta: {pregunta}\n")
+def _correr_una_pregunta(rag, pregunta: str, mostrar_pregunta: bool = True) -> None:
+    """Consulta completa para una pregunta: retrieve top-k + responder + salida.
+
+    mostrar_pregunta controla si se imprime la pregunta de nuevo. En el modo
+    CLI (una pregunta) es True: es la única vez que el humano la ve. En el
+    REPL es False: input() ya muestra el prompt y el terminal refleja lo
+    tipeado, así que imprimirla otra vez la duplicaría (bug reportado).
+    """
+    if mostrar_pregunta:
+        print(f"\nPregunta: {pregunta}\n")
     hits = rag.retrieve(pregunta, k=TOP_K)
     print("--- Top 5 recuperado (RRF híbrido, a nivel documento) ---")
     print(_formatear_hits(hits) if hits else "  (sin coincidencias)")
@@ -129,7 +136,7 @@ def _modo_interactivo(rag) -> int:
         if _es_comando_salida(texto):
             print("Hasta luego.")
             return 0
-        _correr_una_pregunta(rag, texto)
+        _correr_una_pregunta(rag, texto, mostrar_pregunta=False)
 
 
 def main(argv: list[str] | None = None) -> int:

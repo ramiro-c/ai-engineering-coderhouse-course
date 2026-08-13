@@ -214,7 +214,10 @@ def test_modo_interactivo_hace_loop_hasta_salir(monkeypatch, capsys):
     assert stub.llamadas["retrieve"] == 1
     assert stub.llamadas["responder"] == 1
     salida = capsys.readouterr().out
-    assert "¿pregunta uno?" in salida
+    # BUG REAL DEL USUARIO (m0225): la pregunta se repetía. input() ya muestra
+    # el prompt "Pregunta: " y el terminal refleja lo tipeado; el REPL NO debe
+    # volver a imprimir la pregunta (eso duplicaba "como funcionan..." 2 veces).
+    assert "Pregunta: ¿pregunta uno?" not in salida
     assert "r1" in salida
     assert "Hasta luego" in salida  # despedida al salir
 
@@ -304,6 +307,44 @@ def test_main_con_argumento_usa_una_pregunta_no_repl(monkeypatch, capsys):
     assert demo.main(["¿pregunta puntual?"]) == 0
     assert llamado["n"] == 0
     assert "r" in capsys.readouterr().out
+
+
+def test_correr_una_pregunta_sin_mostrar_pregunta_no_imprime_la_pregunta(
+    monkeypatch, capsys
+):
+    """Fix del bug m0225: en REPL la pregunta NO se imprime (el prompt y el
+    echo del terminal ya la muestran). Con mostrar_pregunta=False, el output
+    NO contiene el renglón 'Pregunta: <texto>' (evita la duplicación que vio
+    el usuario: 'como funcionan...' aparecía dos veces).
+    """
+    respuesta = LlmAnswer(
+        pregunta="¿como funcionan?", respuesta="r", answered=True, fuentes=[]
+    )
+    stub = _RAGSystemStub(hits=[], respuesta=respuesta)
+
+    demo._correr_una_pregunta(stub, "¿como funcionan?", mostrar_pregunta=False)
+
+    salida = capsys.readouterr().out
+    assert "Pregunta: ¿como funcionan?" not in salida
+    assert "r" in salida  # la consulta se procesó igual
+
+
+def test_correr_una_pregunta_con_mostrar_pregunta_imprime_la_pregunta(
+    monkeypatch, capsys
+):
+    """En modo CLI (una pregunta con argumento) la pregunta SÍ se imprime:
+    es la única ocasión en que el humano la ve (no hay prompt de input).
+    """
+    respuesta = LlmAnswer(
+        pregunta="¿como funcionan?", respuesta="r", answered=True, fuentes=[]
+    )
+    stub = _RAGSystemStub(hits=[], respuesta=respuesta)
+
+    demo._correr_una_pregunta(stub, "¿como funcionan?", mostrar_pregunta=True)
+
+    salida = capsys.readouterr().out
+    assert "Pregunta: ¿como funcionan?" in salida
+    assert "r" in salida
 
 
 # --- Score RRF de posicion (misma formula que rrf_combine) ---
