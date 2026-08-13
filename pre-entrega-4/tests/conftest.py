@@ -44,9 +44,21 @@ def _skip_slow_sin_credenciales(request: pytest.FixtureRequest) -> None:
 def _pinecone_index(credenciales):
     """Índice Pinecone real (init + ingesta) para los tests de integración.
 
-    Se construye una sola vez por sesión; la primera corrida crea el índice y
-    hace el upsert. Este fixture se completa en la fase 4 (init_index/ingest).
+    Se construye una sola vez por sesión: init_index() verifica/crea el índice
+    Serverless y espera a READY, y upsert_corpus() sube el corpus de data/ con
+    ids deterministas (re-ejecución sin duplicados). Devuelve un dict con el
+    objeto índice conectado, el cliente Pinecone y el resumen de la ingesta
+    por namespace, para que los tests de la fase 4 los usen.
     """
-    raise NotImplementedError(
-        "Fixture de índice real: se implementa en la fase 4 (init_index.py + ingest.py)."
-    )
+    import pinecone
+
+    from config import INDEX_NAME, PINECONE_API_KEY
+    from embeddings import get_embeddings
+    from ingest import upsert_corpus
+    from init_index import init_index
+
+    init_index()
+    cliente = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+    indice = cliente.Index(INDEX_NAME)
+    totales = upsert_corpus(indice, embeddings=get_embeddings())
+    return {"indice": indice, "cliente": cliente, "totales": totales}
