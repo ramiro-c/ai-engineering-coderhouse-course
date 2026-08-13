@@ -46,8 +46,13 @@ INDEX_NAME = _env_str("INDEX_NAME", "pre-entrega-4-rag")
 # --- LLM de generación (evolución B, RF-6/D10) ---
 # Claves por provider; la factory las pasa al constructor del modelo
 # correspondiente. Solo se necesita la del provider activo. El provider
-# gemini autentica vía Vertex AI (ADC, variables GCP abajo) — la clave
-# GEMINI_API_KEY de Google AI Studio dejó de usarse (ENMIENDA U7).
+# gemini usa ChatGoogleGenerativeAI (langchain-google-genai, patrón de
+# pre-entrega-3) y autentica vía Vertex AI cuando GOOGLE_GENAI_USE_VERTEXAI
+# está activo en .env: el SDK nuevo ignora la api_key y usa ADC (variables
+# GCP abajo). La key se expone y se pasa igual que en P3 aunque esté vacía
+# (ENMIENDA 2026-08-13: se revierte la remoción de U7 para volver al patrón
+# P3 no-deprecado; ChatVertexAI quedó deprecado en LangChain 3.2.0).
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 # Proveedor por defecto de la factory multi-provider: gemini/openai/
@@ -56,11 +61,14 @@ LLM_PROVIDER = _env_str("LLM_PROVIDER", "gemini")
 PINECONE_CLOUD = _env_str("PINECONE_CLOUD", "aws")
 PINECONE_REGION = _env_str("PINECONE_REGION", "us-east-1")
 
-# --- Credenciales GCP (generación vía Vertex AI, ENMIENDA 2026-08-12) ---
-# ChatVertexAI autentica con ADC/service account: GOOGLE_APPLICATION_CREDENTIALS
-# apunta al JSON de la service account (rol Vertex AI User) y las otras dos
-# fijan el proyecto y la región de Vertex. Sin ellas, la construcción del
-# modelo falla y responder() degrada a answered=false (RF-6 edge).
+# --- Credenciales GCP (generación vía Vertex AI, ENMIENDA 2026-08-13) ---
+# ChatGoogleGenerativeAI (langchain-google-genai) autentica con ADC/service
+# account: GOOGLE_APPLICATION_CREDENTIALS apunta al JSON de la service account
+# (rol Vertex AI User) y las otras dos fijan el proyecto y la región. El SDK
+# nuevo NO llama a Cloud Resource Manager (el viejo ChatVertexAI lanzaba el
+# 403 "Failed to convert project number to project ID"). Sin ellas, el error
+# de autenticación sale al invocar y responder() degrada a answered=false
+# (RF-6 edge).
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
 GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION")

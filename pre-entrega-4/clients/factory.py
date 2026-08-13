@@ -5,12 +5,17 @@ DEFAULT_MODELS, `_normalize_provider` (provider inválido -> ValueError) y
 `build_chat_model` con imports lazy por provider. El proveedor por defecto
 sale de LLM_PROVIDER (config, default "gemini").
 
-ENMIENDA 2026-08-12 (U7): el provider gemini se construye con ChatVertexAI
-(langchain-google-vertexai) autenticando con ADC/service account
-(GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION)
-en lugar de ChatGoogleGenerativeAI/GEMINI_API_KEY. Sin ADC configurado, el
-constructor de ChatVertexAI lanza el error de autenticación al invocarlo; la
-factory NO lo traga: lo propaga para que responder() lo degrade a
+ENMIENDA 2026-08-13: el provider gemini se construye con ChatGoogleGenerativeAI
+(langchain-google-genai), patrón idéntico de pre-entrega-3. Sigue usando
+Vertex AI porque GOOGLE_GENAI_USE_VERTEXAI=TRUE está en .env: el SDK nuevo
+autentica con ADC/service account (GOOGLE_APPLICATION_CREDENTIALS,
+GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION) y NO llama a Cloud Resource
+Manager — el SDK viejo ChatVertexAI (langchain-google-vertexai) generaba el
+403 "Failed to convert project number to project ID" y quedó deprecado en
+LangChain 3.2.0. La api_key se pasa igual que en P3 aunque esté vacía: con
+Vertex activo el SDK la ignora. Sin ADC configurado, el constructor del SDK
+nuevo es LAZY (no lanza al construir); el error de autenticación sale al
+invocar y la factory lo propaga para que responder() lo degrade a
 answered=False (RF-6 edge controlado). OpenAI/Anthropic/OpenRouter siguen
 disponibles vía LLM_PROVIDER.
 """
@@ -23,6 +28,7 @@ from langchain_core.language_models import BaseChatModel
 
 from config import (
     ANTHROPIC_API_KEY,
+    GEMINI_API_KEY,
     LLM_PROVIDER,
     OPENAI_API_KEY,
 )
@@ -67,13 +73,16 @@ def build_chat_model(
         )
 
     if resolved == "gemini":
-        from langchain_google_vertexai import ChatVertexAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
 
-        # Vertex AI autentica con ADC/service account: sin api_key. Si falta
-        # el ADC, el constructor lanza DefaultCredentialsError (la factory lo
-        # propaga; responder() lo convierte en answered=False).
-        return ChatVertexAI(
-            model_name=DEFAULT_MODELS["gemini"],
+        # Patrón P3 exacto: se pasa GEMINI_API_KEY (config) aunque esté vacía;
+        # con GOOGLE_GENAI_USE_VERTEXAI=TRUE en .env el SDK nuevo usa
+        # ADC/service account e ignora la key. El constructor es lazy: sin
+        # ADC no lanza acá, el error sale al invocar y responder() lo
+        # convierte en answered=False.
+        return ChatGoogleGenerativeAI(
+            api_key=GEMINI_API_KEY,
+            model=DEFAULT_MODELS["gemini"],
             temperature=temperature,
         )
 
