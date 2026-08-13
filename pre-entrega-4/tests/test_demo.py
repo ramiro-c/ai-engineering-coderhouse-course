@@ -16,8 +16,8 @@ interactiva de la generación de respuestas. Contratos verificados SIN red:
 
 El import a nivel de módulo es parte del contrato: si demo.py instanciara
 algo pesado al importar, la recolección de este módulo fallaría (sin ADC,
-ChatVertexAI lanzaría DefaultCredentialsError; sin credenciales, el modelo
-de embeddings no se toca).
+el SDK de Vertex lanzaría DefaultCredentialsError al invocar; sin
+credenciales, el modelo de embeddings no se toca).
 """
 
 from __future__ import annotations

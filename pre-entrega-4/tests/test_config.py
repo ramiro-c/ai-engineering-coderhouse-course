@@ -64,11 +64,12 @@ def test_constantes_rng_por_defecto():
 
 
 def test_gcp_vars_de_vertex_expuestas():
-    """ENMIENDA 2026-08-12 (U7): config expone las variables de Vertex AI.
+    """ENMIENDA 2026-08-13: config expone las variables de Vertex AI.
 
-    ChatVertexAI autentica vía ADC/service account: config carga las 3
-    variables GCP que ya están en pre-entrega-4/.env y las deja disponibles
-    para el resto del pipeline (sin exponer sus valores).
+    ChatGoogleGenerativeAI (langchain-google-genai) autentica vía
+    ADC/service account cuando GOOGLE_GENAI_USE_VERTEXAI está activo: config
+    carga las 3 variables GCP que ya están en pre-entrega-4/.env y las deja
+    disponibles para el resto del pipeline (sin exponer sus valores).
     """
     assert hasattr(config, "GOOGLE_APPLICATION_CREDENTIALS")
     assert hasattr(config, "GOOGLE_CLOUD_PROJECT")

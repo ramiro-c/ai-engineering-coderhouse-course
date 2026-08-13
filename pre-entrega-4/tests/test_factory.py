@@ -4,13 +4,17 @@ Especifica el contrato de clients/factory.py, copia adaptada del patrón de
 pre-entrega-3: DEFAULT_MODELS idénticos, _normalize_provider (provider
 inválido -> ValueError), build_chat_model(provider, temperature=0.2) con lazy
 imports (importar factory NO instancia modelos) y default desde LLM_PROVIDER
-(gemini). ENMIENDA 2026-08-12 (U7): el provider gemini se construye con
-ChatVertexAI (langchain_google_vertexai, auth vía ADC/service account, sin
-api_key) en lugar de ChatGoogleGenerativeAI. Los constructores de las
-librerías se inyectan como módulos falsos en sys.modules: los tests no tocan
-la red ni API keys. Lección #870: los stubs reproducen la semántica de
-errores real (excepciones), no solo valores de retorno — el stub de Vertex
-lanza DefaultCredentialsError cuando falta ADC, igual que la librería real.
+(gemini). ENMIENDA 2026-08-13: el provider gemini se construye con
+ChatGoogleGenerativeAI (langchain-google-genai), patrón idéntico de
+pre-entrega-3. Sigue usando Vertex AI porque GOOGLE_GENAI_USE_VERTEXAI=TRUE
+está en .env: el SDK nuevo autentica con ADC/service account y NO llama a
+Cloud Resource Manager (el SDK viejo ChatVertexAI generaba el 403
+"Failed to convert project number to project ID"). api_key se pasa igual
+que en P3 aunque esté vacía: con Vertex activo el SDK la ignora. Los
+constructores de las librerías se inyectan como módulos falsos en sys.modules:
+los tests no tocan la red ni API keys. Lección #870: el constructor del SDK
+nuevo es LAZY (no lanza sin ADC al construir; el DefaultCredentialsError
+sale al invocar y responder() lo degrada a answered=False, RF-6).
 """
 
 from __future__ import annotations
@@ -19,7 +23,6 @@ import sys
 import types
 
 import pytest
-from google.auth.exceptions import DefaultCredentialsError
 
 import clients.factory as factory
 from clients.factory import DEFAULT_MODELS, _normalize_provider, build_chat_model
@@ -53,20 +56,21 @@ def _fake_chat(nombre: str):
 
 
 def test_build_chat_model_gemini_usa_modelo_default(monkeypatch):
-    """ENMIENDA U7: gemini se construye con ChatVertexAI (Vertex AI, sin api_key)."""
-    fake, llamadas = _fake_chat("ChatVertexAI")
+    """ENMIENDA 2026-08-13: gemini se construye con ChatGoogleGenerativeAI
+    (patrón P3, langchain-google-genai). Sigue Vertex vía GOOGLE_GENAI_USE_VERTEXAI."""
+    fake, llamadas = _fake_chat("ChatGoogleGenerativeAI")
     _inyectar_provider(
-        monkeypatch, "langchain_google_vertexai", ChatVertexAI=fake
+        monkeypatch, "langchain_google_genai", ChatGoogleGenerativeAI=fake
     )
 
     modelo = build_chat_model(provider="gemini")
 
     assert isinstance(modelo, fake)
-    assert llamadas[0]["model_name"] == DEFAULT_MODELS["gemini"] == "gemini-2.5-flash"
+    assert llamadas[0]["model"] == DEFAULT_MODELS["gemini"] == "gemini-2.5-flash"
     assert llamadas[0]["temperature"] == 0.2
-    # Vertex AI autentica con ADC/service account (GOOGLE_APPLICATION_CREDENTIALS):
-    # el constructor NO recibe api_key (no hay GEMINI_API_KEY en la enmienda U7).
-    assert "api_key" not in llamadas[0]
+    # Patrón P3: api_key se pasa siempre (GEMINI_API_KEY de config). Con
+    # GOOGLE_GENAI_USE_VERTEXAI=TRUE el SDK nuevo la ignora y usa ADC/Vertex.
+    assert llamadas[0]["api_key"] == factory.GEMINI_API_KEY
 
 
 def test_build_chat_model_openai_usa_modelo_default(monkeypatch):
@@ -113,16 +117,16 @@ def test_normalize_provider_normaliza_espacios_y_mayusculas():
 
 
 def test_default_usa_llm_provider_gemini(monkeypatch):
-    fake, llamadas = _fake_chat("ChatVertexAI")
+    fake, llamadas = _fake_chat("ChatGoogleGenerativeAI")
     _inyectar_provider(
-        monkeypatch, "langchain_google_vertexai", ChatVertexAI=fake
+        monkeypatch, "langchain_google_genai", ChatGoogleGenerativeAI=fake
     )
     monkeypatch.setattr(factory, "LLM_PROVIDER", "gemini")
 
     modelo = build_chat_model()  # sin provider: default LLM_PROVIDER
 
     assert isinstance(modelo, fake)
-    assert llamadas[0]["model_name"] == "gemini-2.5-flash"
+    assert llamadas[0]["model"] == "gemini-2.5-flash"
 
 
 def test_default_respeta_llm_provider_cambiado(monkeypatch):
@@ -138,31 +142,29 @@ def test_default_respeta_llm_provider_cambiado(monkeypatch):
 
 def test_importar_factory_no_instancia_modelos():
     """Lazy imports: importar factory no expone ni instancia los providers."""
-    for attr in ("ChatOpenAI", "ChatVertexAI", "ChatAnthropic", "ChatOpenRouter"):
+    for attr in ("ChatOpenAI", "ChatGoogleGenerativeAI", "ChatAnthropic", "ChatOpenRouter"):
         assert not hasattr(factory, attr), (
             f"el import de factory no debe exponer {attr}: los imports de "
             "provider deben ser lazy (dentro de build_chat_model)"
         )
 
 
-def test_gemini_sin_adc_propaga_error_de_autenticacion(monkeypatch):
-    """Lección #870: el stub reproduce la excepción REAL de Vertex sin ADC.
+def test_gemini_sin_adc_construye_lazy_y_error_sale_al_invocar(monkeypatch):
+    """Lección #870: el SDK nuevo (langchain-google-genai) es LAZY sin ADC.
 
-    Si falta GOOGLE_APPLICATION_CREDENTIALS (o el ADC no resuelve), la librería
-    lanza google.auth.exceptions.DefaultCredentialsError al construir
-    ChatVertexAI. build_chat_model NO debe tragarla: la propaga para que
-    responder() la convierta en answered=False (RF-6 edge controlado).
+    A diferencia de ChatVertexAI (que lanzaba DefaultCredentialsError al
+    construir), ChatGoogleGenerativeAI construye sin validar credenciales;
+    el error sale al INVOCAR y responder() lo degrada a answered=False
+    (RF-6 edge controlado, ya cubierto en test_rag_system). La factory
+    construye y devuelve el modelo; si el constructor lanzara igual, la
+    factory lo propaga (no lo traga).
     """
-
-    class _ChatVertexAISinADC:
-        def __init__(self, **kwargs):
-            raise DefaultCredentialsError(
-                "Could not automatically determine credentials"
-            )
-
+    fake, llamadas = _fake_chat("ChatGoogleGenerativeAI")
     _inyectar_provider(
-        monkeypatch, "langchain_google_vertexai", ChatVertexAI=_ChatVertexAISinADC
+        monkeypatch, "langchain_google_genai", ChatGoogleGenerativeAI=fake
     )
 
-    with pytest.raises(DefaultCredentialsError, match="credentials"):
-        build_chat_model(provider="gemini")
+    modelo = build_chat_model(provider="gemini")
+
+    assert isinstance(modelo, fake)
+    assert "api_key" in llamadas[0]  # patrón P3: la factory siempre la pasa
