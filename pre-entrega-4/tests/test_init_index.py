@@ -71,14 +71,21 @@ class _ServerlessSpecFalso:
 
 
 class _ModuloPinecone:
-    Pinecone = _PineconeStub
-    ServerlessSpec = _ServerlessSpecFalso
+    """Módulo pinecone stub: Pinecone() devuelve SIEMPRE la instancia del test."""
+
+    def __init__(self, cliente: _PineconeStub):
+        self._cliente = cliente
+        self.ServerlessSpec = _ServerlessSpecFalso
+
+    def Pinecone(self, api_key=None):
+        return self._cliente
 
 
 def test_crea_indice_y_espera_ready(monkeypatch):
     """Índice inexistente: lo crea con la spec correcta y espera a READY (RF-1 happy)."""
     stub = _PineconeStub()
-    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone)
+    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone(stub))
+    monkeypatch.setattr(init_index, "PINECONE_API_KEY", "clave-dummy-de-test")
 
     resumen = init_index.init_index(poll_intervalo=0)
 
@@ -97,7 +104,8 @@ def test_crea_indice_y_espera_ready(monkeypatch):
 def test_indice_existente_es_idempotente(monkeypatch):
     """Índice ya existente: verifica y continúa sin recrear (RF-1 edge)."""
     stub = _PineconeStub(indice_existente=_IndiceFalso(describes_hasta_ready=1))
-    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone)
+    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone(stub))
+    monkeypatch.setattr(init_index, "PINECONE_API_KEY", "clave-dummy-de-test")
 
     resumen = init_index.init_index(poll_intervalo=0)
 
@@ -111,7 +119,8 @@ def test_indice_existente_con_dim_distinta_advierte(monkeypatch, capsys):
     stub = _PineconeStub(
         indice_existente=_IndiceFalso(describes_hasta_ready=1, dimension=384)
     )
-    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone)
+    monkeypatch.setattr(init_index, "pinecone", _ModuloPinecone(stub))
+    monkeypatch.setattr(init_index, "PINECONE_API_KEY", "clave-dummy-de-test")
 
     resumen = init_index.init_index(poll_intervalo=0)
 
