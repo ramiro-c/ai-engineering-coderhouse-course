@@ -94,7 +94,7 @@ def test_retrieve_top5_devuelve_metadata_completa(_pinecone_index):
         metadata = documento.metadata
         assert metadata.get("document_id")
         assert metadata.get("source") == metadata.get("document_id")
-        assert metadata.get("texto") == documento.page_content  # D4
+        assert metadata.get("texto") is None  # D4: en query, text_key se popea a page_content
     # Happy path: la query de routing recupera routing.md en el top.
     assert hits[0][0].metadata["document_id"] == "routing.md"
 
