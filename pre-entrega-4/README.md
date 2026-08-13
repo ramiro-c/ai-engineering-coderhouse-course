@@ -212,3 +212,23 @@ según la variable `LLM_PROVIDER` (default `gemini`):
 > recuperación híbrida; la capa de generación es una demostración opcional.
 > Un buen score de evaluación no garantiza buenas respuestas generadas (y
 > viceversa).
+
+### Demo interactiva
+
+Un script de demostración end-to-end de la generación de respuestas: recupera
+el top-5 híbrido (con `document_id`/score RRF, el rank 1 destacado) y genera
+la respuesta con el LLM configurado (`LLM_PROVIDER`), imprimiendo ambos en
+consola.
+
+```bash
+cd pre-entrega-4 && source .venv/bin/activate
+HF_HUB_OFFLINE=1 python3 pre-entrega-4/demo.py "¿Cómo defino un decorador POST en FastAPI?"
+python3 pre-entrega-4/demo.py        # sin argumento: pregunta por prompt interactivo
+```
+
+Sin argumento, el script pide la pregunta por prompt (Enter usa la pregunta
+de ejemplo del corpus). Si el LLM no puede responder (`answered=false`:
+contexto insuficiente o error del proveedor), imprime un mensaje claro de
+degradación sin romper el flujo. La demo es un script en archivo
+(deliberadamente, lección #866: `load_dotenv` no resuelve `.env` desde
+`python3 -c`), así que ve las claves del `.env` como el resto de los CLIs.
