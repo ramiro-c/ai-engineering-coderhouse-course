@@ -1,0 +1,24 @@
+# --- Pre-entrega 4: RAG híbrido Pinecone + BM25 ---
+#
+# Versiones fijadas para reproducibilidad (resueltas en la exploración):
+#   * pinecone==7.3.0: última compatible con langchain-pinecone 0.2.13, que
+#     exige pinecone >=6,<8. El SDK 9.1.0 NO convive con langchain-pinecone.
+#   * langchain-classic: EnsembleRetriever vive en langchain_classic.retrievers,
+#     NO en langchain-community (donde está BM25Retriever).
+
+pinecone==7.3.0              # SDK Pinecone; pin <8 por langchain-pinecone 0.2.13
+langchain-pinecone==0.2.13   # PineconeVectorStore (namespace, text_key, ids)
+langchain-community==0.4.2   # BM25Retriever (rank_bm25 local)
+langchain-classic>=1.0.7     # EnsembleRetriever (RRF); import desde langchain_classic.retrievers
+langchain==1.3.14            # framework base
+langchain-openai==1.4.2      # OpenAIEmbeddings (text-embedding-3-small)
+langchain-text-splitters>=1.0  # RecursiveCharacterTextSplitter / MarkdownHeaderTextSplitter
+openai==2.53.0               # cliente OpenAI para embeddings
+tiktoken                     # conteo de tokens (cl100k_base) para el chunking
+rank-bm25==0.2.2             # BM25Okapi local para BM25Retriever
+pydantic==2.12.5             # schemas de evaluación (GoldenSet, EvalResult, ...)
+python-dotenv                # carga de .env en config.py
+pytest>=8                    # runner de tests (unit + integración marcada slow)
+
+# pinecone-text==0.11.0  # NO usado en el enfoque A; reservado para la evolución B
+#                        # (híbrido server-side nativo de Pinecone, documentada en README)
