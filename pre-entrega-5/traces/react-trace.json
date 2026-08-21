@@ -1,0 +1,56 @@
+[
+  {
+    "tipo": "human",
+    "content": "¿Cuántos pedidos tuvo el cliente 102 y cuál fue el total?"
+  },
+  {
+    "tipo": "ai",
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "buscar_cliente",
+        "args": {
+          "cliente_id": 102
+        },
+        "id": "da3b5349-6bad-4583-9e53-00d179571421",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "tipo": "tool",
+    "content": "{\"id\": 102, \"nombre\": \"Carlos Méndez\", \"email\": \"carlos.mendez@example.com\", \"telefono\": \"+54 11 5555-0102\"}",
+    "name": "buscar_cliente"
+  },
+  {
+    "tipo": "ai",
+    "content": "",
+    "tool_calls": [
+      {
+        "name": "buscar_pedidos",
+        "args": {
+          "cliente_id": 102
+        },
+        "id": "12b2141a-1c44-48e7-a11d-beaac9c30a49",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "tipo": "tool",
+    "content": "{\"pedidos\": [{\"id\": 501, \"total\": 3000, \"fecha\": \"2024-01-10\", \"estado\": \"entregado\"}, {\"id\": 502, \"total\": 5500, \"fecha\": \"2024-03-15\", \"estado\": \"entregado\"}, {\"id\": 503, \"total\": 6000, \"fecha\": \"2024-06-20\", \"estado\": \"entregado\"}], \"total\": 14500, \"cantidad\": 3}",
+    "name": "buscar_pedidos"
+  },
+  {
+    "tipo": "ai",
+    "content": "El cliente Carlos Méndez (ID 102) tuvo 3 pedidos, y el total de los mismos fue de 14500."
+  },
+  {
+    "tipo": "human",
+    "content": "¿y el último?"
+  },
+  {
+    "tipo": "ai",
+    "content": "El último pedido de Carlos Méndez (ID 102) fue el 503, realizado el 2024-06-20, por un total de 6000."
+  }
+]

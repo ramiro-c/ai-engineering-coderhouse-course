@@ -1,0 +1,18 @@
+# --- Pre-entrega 5: agente ReAct con LangGraph ---
+#
+# Versiones fijadas para reproducibilidad (patrón pre-entrega-4).
+
+langchain==1.3.14
+langchain-google-genai==4.3.3
+langchain-openai==1.4.2
+langchain-anthropic==1.5.5
+langchain-openrouter==0.2.7
+openai==2.53.0
+pydantic==2.12.5
+python-dotenv
+pytest>=8
+
+# --- LangGraph (agente ReAct, tareas posteriores) ---
+langgraph==1.2.11
+langgraph-checkpoint-sqlite==3.1.1
+langgraph-prebuilt==1.1.0
