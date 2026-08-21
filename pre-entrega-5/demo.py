@@ -154,6 +154,7 @@ async def _correr_turno(
     config: dict,
     *,
     mostrar_pregunta: bool = True,
+    continuar_si_error: bool = True,
 ) -> None:
     """Un turno del agente: ainvoke + imprime la última respuesta del asistente."""
     from langchain_core.messages import AIMessage, HumanMessage
@@ -167,6 +168,8 @@ async def _correr_turno(
             config=config,
         )
     except Exception as exc:
+        if not continuar_si_error:
+            raise
         print(f"\nError al invocar el agente: {exc}")
         return
 
@@ -207,8 +210,8 @@ async def _modo_trace(graph: Any, config: dict) -> int:
         "Modo --trace: demo scriptada del cliente 102 "
         "(dos turnos, thread_id efímero salvo --thread-id explícito)."
     )
-    await _correr_turno(graph, TRACE_TURN_1, config)
-    await _correr_turno(graph, TRACE_TURN_2, config)
+    await _correr_turno(graph, TRACE_TURN_1, config, continuar_si_error=False)
+    await _correr_turno(graph, TRACE_TURN_2, config, continuar_si_error=False)
 
     state = graph.get_state(config)
     messages = state.values["messages"]
