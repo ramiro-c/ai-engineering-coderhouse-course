@@ -9,12 +9,7 @@ from langgraph.prebuilt import tools_condition
 
 import graph
 from config import RECURSION_LIMIT
-from graph import AgentState, build_graph, create_checkpointer, invoke_config, open_checkpointer
-
-
-@pytest.fixture
-def memory_checkpointer():
-    return create_checkpointer(":memory:")
+from graph import AgentState, build_graph, invoke_config, open_checkpointer
 
 
 def test_graph_tiene_nodos_agent_y_tools(memory_checkpointer):

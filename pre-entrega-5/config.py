@@ -50,5 +50,7 @@ GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT")
 GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION")
 
 # --- Agente ReAct (LangGraph) ---
-CHECKPOINT_PATH = Path(os.getenv("CHECKPOINT_PATH", str(BASE_DIR / "checkpoints.sqlite")))
+CHECKPOINT_PATH = Path(
+    _env_str("CHECKPOINT_PATH", str(BASE_DIR / "checkpoints.sqlite"))
+)
 RECURSION_LIMIT = 10

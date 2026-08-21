@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from graph import create_checkpointer
 from config import (
     GOOGLE_APPLICATION_CREDENTIALS,
     GOOGLE_CLOUD_LOCATION,
@@ -14,6 +15,11 @@ from config import (
 )
 
 _vertex_credenciales_ok: bool | None = None
+
+
+@pytest.fixture
+def memory_checkpointer():
+    return create_checkpointer(":memory:")
 
 
 def _vertex_listo() -> bool:

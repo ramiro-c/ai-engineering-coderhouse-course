@@ -56,10 +56,17 @@ def test_gcp_vars_de_vertex_expuestas():
     assert hasattr(config, "GOOGLE_CLOUD_LOCATION")
 
 
-def test_llm_provider_default_gemini(monkeypatch):
+@pytest.fixture
+def config_sin_dotenv(monkeypatch):
+    """Evita load_dotenv en reload y restaura config al finalizar el test."""
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: False)
+    yield
+    importlib.reload(config)
+
+
+def test_llm_provider_default_gemini(monkeypatch, config_sin_dotenv):
     """Default gemini cuando LLM_PROVIDER no está en el entorno (sin .env)."""
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
-    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: False)
     importlib.reload(config)
     assert config.LLM_PROVIDER == "gemini"
 
@@ -68,5 +75,13 @@ def test_recursion_limit_es_10():
     assert config.RECURSION_LIMIT == 10
 
 
-def test_checkpoint_path_default_es_sqlite_en_basedir():
+def test_checkpoint_path_default_es_sqlite_en_basedir(monkeypatch, config_sin_dotenv):
+    monkeypatch.delenv("CHECKPOINT_PATH", raising=False)
+    importlib.reload(config)
+    assert config.CHECKPOINT_PATH == config.BASE_DIR / "checkpoints.sqlite"
+
+
+def test_checkpoint_path_vacio_usa_default(monkeypatch, config_sin_dotenv):
+    monkeypatch.setenv("CHECKPOINT_PATH", "")
+    importlib.reload(config)
     assert config.CHECKPOINT_PATH == config.BASE_DIR / "checkpoints.sqlite"

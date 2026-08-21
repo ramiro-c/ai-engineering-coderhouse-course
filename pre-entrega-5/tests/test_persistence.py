@@ -11,12 +11,7 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 import graph
-from graph import build_graph, create_checkpointer, invoke_config
-
-
-@pytest.fixture
-def memory_checkpointer():
-    return create_checkpointer(":memory:")
+from graph import build_graph, invoke_config
 
 
 class _PersistenceFakeChatModel:

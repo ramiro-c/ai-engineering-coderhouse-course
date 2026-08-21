@@ -161,10 +161,14 @@ async def _correr_turno(
     if mostrar_pregunta:
         print(f"\nPregunta: {pregunta}\n")
 
-    result = await graph.ainvoke(
-        {"messages": [HumanMessage(content=pregunta)]},
-        config=config,
-    )
+    try:
+        result = await graph.ainvoke(
+            {"messages": [HumanMessage(content=pregunta)]},
+            config=config,
+        )
+    except Exception as exc:
+        print(f"\nError al invocar el agente: {exc}")
+        return
 
     last = result["messages"][-1]
     print("\n--- Respuesta ---")
@@ -199,7 +203,10 @@ async def _modo_trace(graph: Any, config: dict) -> int:
     """Demo scriptada de dos turnos (cliente 102) y dump de trazas ReAct."""
     _verificar_credenciales_vertex()
 
-    print("Modo --trace: demo scriptada del cliente 102 (dos turnos, mismo thread_id).")
+    print(
+        "Modo --trace: demo scriptada del cliente 102 "
+        "(dos turnos, thread_id efímero salvo --thread-id explícito)."
+    )
     await _correr_turno(graph, TRACE_TURN_1, config)
     await _correr_turno(graph, TRACE_TURN_2, config)
 
@@ -215,8 +222,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--thread-id",
-        default="demo",
-        help="thread_id del checkpointer (default: demo)",
+        default=None,
+        help=(
+            "thread_id del checkpointer (REPL default: demo; "
+            "--trace usa id efímero salvo que lo indiques)"
+        ),
     )
     parser.add_argument(
         "--trace",
@@ -231,7 +241,12 @@ async def main(argv: list[str] | None = None) -> int:
     from graph import build_graph, invoke_config, open_checkpointer
 
     args = _parse_args(list(sys.argv[1:] if argv is None else argv))
-    thread_id = args.thread_id or str(uuid.uuid4())
+    if args.trace:
+        thread_id = (
+            args.thread_id if args.thread_id is not None else f"trace-{uuid.uuid4()}"
+        )
+    else:
+        thread_id = args.thread_id or "demo"
 
     checkpointer = open_checkpointer()
     graph = build_graph(checkpointer)

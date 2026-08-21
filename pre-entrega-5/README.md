@@ -56,9 +56,11 @@ python demo.py --trace        # demo scriptada cliente 102 + dump de trazas
    `demo`).
 
 4. **`python demo.py --trace`** — corre una demo scriptada de dos turnos sobre
-   el cliente 102 (mismo `thread_id`) y escribe las trazas ReAct en
-   `traces/react-trace.json` y `traces/react-trace.log`. Requiere credenciales
-   Vertex configuradas (validación explícita antes de invocar el LLM).
+   el cliente 102 y escribe las trazas ReAct en `traces/react-trace.json` y
+   `traces/react-trace.log`. Usa un `thread_id` efímero (`trace-<uuid>`) para
+   que regenerar trazas no acumule historial de corridas anteriores; pasá
+   `--thread-id` solo si querés fijar la sesión a propósito. Requiere
+   credenciales Vertex configuradas (validación explícita antes de invocar el LLM).
 
 > **Nunca commitees claves.** `.env` y archivos `*.sqlite` (p. ej.
 > `checkpoints.sqlite`) están en `.gitignore`. El JSON de ADC/service account
