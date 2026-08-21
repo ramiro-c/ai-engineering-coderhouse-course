@@ -60,8 +60,10 @@ python demo.py --trace        # demo scriptada cliente 102 + dump de trazas
    `traces/react-trace.json` y `traces/react-trace.log`. Requiere credenciales
    Vertex configuradas (validación explícita antes de invocar el LLM).
 
-> **Nunca commitees claves.** El `.env`, el JSON de ADC/service account y
-> `checkpoints.sqlite` están en `.gitignore`. Solo versioná `.env.example`.
+> **Nunca commitees claves.** `.env` y archivos `*.sqlite` (p. ej.
+> `checkpoints.sqlite`) están en `.gitignore`. El JSON de ADC/service account
+> **no** se ignora por ruta arbitraria: mantenelo fuera del repo o bajo
+> `.secrets/` (directorio sí ignorado). Solo versioná `.env.example`.
 
 ## Arquitectura del grafo
 
