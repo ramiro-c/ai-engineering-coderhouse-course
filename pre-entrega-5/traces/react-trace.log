@@ -1,11 +1,15 @@
 Usuario: ¿Cuántos pedidos tuvo el cliente 102 y cuál fue el total?
 
+Asistente → Acción: buscar_cliente(cliente_id=102)
+
+Observación (buscar_cliente): {"id": 102, "nombre": "Carlos Méndez", "email": "carlos.mendez@example.com", "telefono": "+54 11 5555-0102"}
+
 Asistente → Acción: buscar_pedidos(cliente_id=102)
 
 Observación (buscar_pedidos): {"pedidos": [{"id": 501, "total": 3000, "fecha": "2024-01-10", "estado": "entregado"}, {"id": 502, "total": 5500, "fecha": "2024-03-15", "estado": "entregado"}, {"id": 503, "total": 6000, "fecha": "2024-06-20", "estado": "entregado"}], "total": 14500, "cantidad": 3}
 
-Asistente: El cliente 102 tuvo 3 pedidos, y el total de los mismos fue de 14500.
+Asistente: El cliente Carlos Méndez (ID 102) tuvo 3 pedidos, y el total de los mismos fue de 14500.
 
 Usuario: ¿y el último?
 
-Asistente: El último pedido del cliente 102 (ID 503) fue realizado el 2024-06-20, se encuentra en estado "entregado" y tuvo un total de 6000.
+Asistente: El último pedido de Carlos Méndez (ID 102) fue el 503, realizado el 2024-06-20, por un total de 6000.

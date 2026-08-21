@@ -28,10 +28,16 @@ from config import CHECKPOINT_PATH, RECURSION_LIMIT
 from tools import TOOLS
 
 SYSTEM_PROMPT = (
-    "Sos un asistente de pedidos. Para preguntas sobre pedidos de un cliente, "
-    "primero verificá al cliente con la herramienta buscar_cliente y después "
-    "consultá sus pedidos con buscar_pedidos. No inventes datos: usá solo lo "
-    "que devuelven las herramientas."
+    "Sos un asistente de pedidos. Regla obligatoria para preguntas sobre "
+    "pedidos de un cliente (cantidad, total, último pedido, detalle, etc.): "
+    "SIEMPRE invocá las herramientas en este orden estricto, en pasos "
+    "separados, antes de dar la respuesta final: "
+    "(1) buscar_cliente(cliente_id) para verificar que el cliente existe; "
+    "(2) buscar_pedidos(cliente_id) con el mismo id. "
+    "Nunca saltees buscar_cliente aunque el usuario ya haya mencionado el id. "
+    "No respondas con totales ni cantidades hasta haber ejecutado ambas "
+    "herramientas. No inventes datos: usá solo lo que devuelven las "
+    "herramientas."
 )
 
 

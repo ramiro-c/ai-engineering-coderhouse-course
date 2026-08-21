@@ -8,11 +8,30 @@
     "content": "",
     "tool_calls": [
       {
+        "name": "buscar_cliente",
+        "args": {
+          "cliente_id": 102
+        },
+        "id": "da3b5349-6bad-4583-9e53-00d179571421",
+        "type": "tool_call"
+      }
+    ]
+  },
+  {
+    "tipo": "tool",
+    "content": "{\"id\": 102, \"nombre\": \"Carlos Méndez\", \"email\": \"carlos.mendez@example.com\", \"telefono\": \"+54 11 5555-0102\"}",
+    "name": "buscar_cliente"
+  },
+  {
+    "tipo": "ai",
+    "content": "",
+    "tool_calls": [
+      {
         "name": "buscar_pedidos",
         "args": {
           "cliente_id": 102
         },
-        "id": "031173e0-ed38-4ad3-b492-b8d815c82270",
+        "id": "12b2141a-1c44-48e7-a11d-beaac9c30a49",
         "type": "tool_call"
       }
     ]
@@ -24,7 +43,7 @@
   },
   {
     "tipo": "ai",
-    "content": "El cliente 102 tuvo 3 pedidos, y el total de los mismos fue de 14500."
+    "content": "El cliente Carlos Méndez (ID 102) tuvo 3 pedidos, y el total de los mismos fue de 14500."
   },
   {
     "tipo": "human",
@@ -32,6 +51,6 @@
   },
   {
     "tipo": "ai",
-    "content": "El último pedido del cliente 102 (ID 503) fue realizado el 2024-06-20, se encuentra en estado \"entregado\" y tuvo un total de 6000."
+    "content": "El último pedido de Carlos Méndez (ID 102) fue el 503, realizado el 2024-06-20, por un total de 6000."
   }
 ]
