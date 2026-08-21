@@ -13,14 +13,13 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import AsyncIterator, Sequence
-from typing import Annotated, Any
+from typing import Any
 
-from langchain_core.messages import AnyMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import ChannelVersions, Checkpoint, CheckpointMetadata
 from langgraph.checkpoint.sqlite import SqliteSaver as _BaseSqliteSaver
-from langgraph.graph import START, StateGraph
-from langgraph.graph.message import add_messages
+from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
@@ -82,16 +81,8 @@ class SqliteSaver(_BaseSqliteSaver):
         return self.put_writes(config, writes, task_id, task_path)
 
 
-class MessagesState:
-    """Esquema de ``langgraph.graph.MessagesState`` (reducer ``add_messages``)."""
-
-    messages: Annotated[list[AnyMessage], add_messages]
-
-
 class AgentState(MessagesState):
     """Historial de mensajes; el reducer add_messages acumula, no reemplaza."""
-
-    messages: Annotated[list[AnyMessage], add_messages]
 
 
 def _messages_with_system(messages: list) -> list:
