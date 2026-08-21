@@ -8,7 +8,7 @@ from langgraph.prebuilt import tools_condition
 
 import graph
 from config import RECURSION_LIMIT
-from graph import AgentState, build_graph, create_checkpointer, invoke_config, open_checkpointer
+from graph import AgentState, MessagesState, build_graph, create_checkpointer, invoke_config, open_checkpointer
 
 
 @pytest.fixture
@@ -113,6 +113,7 @@ async def test_ainvoke_con_fake_llm_dos_tools_y_respuesta_final(
 
 
 def test_agent_state_es_subclase_messages_state():
+    assert issubclass(AgentState, MessagesState)
     assert "messages" in AgentState.__annotations__
     assert AgentState.__doc__ is not None
     assert "add_messages" in AgentState.__doc__

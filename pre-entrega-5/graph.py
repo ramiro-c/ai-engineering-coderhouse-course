@@ -1,16 +1,26 @@
-"""StateGraph ReAct con agent async, ToolNode, tools_condition y SqliteSaver."""
+"""StateGraph ReAct con agent async, ToolNode, tools_condition y SqliteSaver.
+
+El checkpointer es un ``SqliteSaver`` local (subclase del upstream sync) con
+wrappers async mínimos para que ``CompiledStateGraph.ainvoke`` funcione sin
+``AsyncSqliteSaver``: sigue siendo checkpointing SQLite sync vía ``sqlite3``.
+
+Usar ``open_checkpointer()`` o ``create_checkpointer()`` al compilar con
+``build_graph``; no instanciar el ``SqliteSaver`` upstream sin esos métodos
+async, porque ``ainvoke`` fallará con ``NotImplementedError``.
+"""
 
 from __future__ import annotations
 
 import sqlite3
 from collections.abc import AsyncIterator, Sequence
-from typing import Any
+from typing import Annotated, Any
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import AnyMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import ChannelVersions, Checkpoint, CheckpointMetadata
 from langgraph.checkpoint.sqlite import SqliteSaver as _BaseSqliteSaver
-from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.graph import START, StateGraph
+from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
@@ -27,7 +37,17 @@ SYSTEM_PROMPT = (
 
 
 class SqliteSaver(_BaseSqliteSaver):
-    """SqliteSaver sync con delegación async para graph.ainvoke (LangGraph 1.x)."""
+    """SqliteSaver sync con wrappers async para ``graph.ainvoke`` (LangGraph 1.x).
+
+    Hereda del ``SqliteSaver`` upstream (checkpointing SQLite sync). LangGraph
+    llama ``aget_tuple`` / ``aput`` / etc. desde ``ainvoke``; el upstream solo
+    implementa la API sync. Estos métodos delegan en ``get_tuple`` / ``put`` /
+    ``list`` / ``put_writes`` — mismo almacenamiento, sin ``AsyncSqliteSaver``
+    ni ``aiosqlite``.
+
+    Obtener instancias vía ``create_checkpointer()`` o ``open_checkpointer()``,
+    no con el ``SqliteSaver`` crudo de ``langgraph.checkpoint.sqlite``.
+    """
 
     async def aget_tuple(self, config: RunnableConfig):
         return self.get_tuple(config)
@@ -62,8 +82,16 @@ class SqliteSaver(_BaseSqliteSaver):
         return self.put_writes(config, writes, task_id, task_path)
 
 
+class MessagesState:
+    """Esquema de ``langgraph.graph.MessagesState`` (reducer ``add_messages``)."""
+
+    messages: Annotated[list[AnyMessage], add_messages]
+
+
 class AgentState(MessagesState):
     """Historial de mensajes; el reducer add_messages acumula, no reemplaza."""
+
+    messages: Annotated[list[AnyMessage], add_messages]
 
 
 def _messages_with_system(messages: list) -> list:
@@ -92,6 +120,7 @@ def build_graph(checkpointer: SqliteSaver) -> CompiledStateGraph:
 
 
 def create_checkpointer(path: str | sqlite3.Connection = ":memory:") -> SqliteSaver:
+    """Crea el ``SqliteSaver`` local (sync + wrappers async) para ``build_graph``."""
     if isinstance(path, sqlite3.Connection):
         conn = path
     else:
@@ -100,6 +129,7 @@ def create_checkpointer(path: str | sqlite3.Connection = ":memory:") -> SqliteSa
 
 
 def open_checkpointer() -> SqliteSaver:
+    """Abre el checkpointer persistente en ``config.CHECKPOINT_PATH``."""
     return create_checkpointer(str(CHECKPOINT_PATH))
 
 
