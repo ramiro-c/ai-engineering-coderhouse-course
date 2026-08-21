@@ -44,6 +44,11 @@ def test_env_str_ausente_usa_default(monkeypatch):
     assert config._env_str("TEST_STR", "default") == "default"
 
 
+def test_env_str_vacio_usa_default(monkeypatch):
+    monkeypatch.setenv("TEST_STR", "")
+    assert config._env_str("TEST_STR", "default") == "default"
+
+
 def test_gcp_vars_de_vertex_expuestas():
     """Config expone las variables de Vertex AI para ADC/service account."""
     assert hasattr(config, "GOOGLE_APPLICATION_CREDENTIALS")
@@ -52,7 +57,9 @@ def test_gcp_vars_de_vertex_expuestas():
 
 
 def test_llm_provider_default_gemini(monkeypatch):
+    """Default gemini cuando LLM_PROVIDER no está en el entorno (sin .env)."""
     monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: False)
     importlib.reload(config)
     assert config.LLM_PROVIDER == "gemini"
 
